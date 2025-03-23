@@ -1,6 +1,7 @@
 package calculator
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 
@@ -71,6 +72,23 @@ func (c *Calculator) GetSchema() mcp.ToolInputSchema {
 // GetTool returns the MCP Tool
 func (c *Calculator) GetTool() mcp.Tool {
 	return c.Tool
+}
+
+// Handler returns a function that handles tool execution requests
+func (c *Calculator) Handler() func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
+		paramsJSON, err := json.Marshal(request.Params.Arguments)
+		if err != nil {
+			return nil, err
+		}
+
+		result, err := c.Execute(string(paramsJSON))
+		if err != nil {
+			return mcp.NewToolResultText("Error: " + err.Error()), nil
+		}
+
+		return mcp.NewToolResultText(result), nil
+	}
 }
 
 // Execute performs the calculation based on provided parameters

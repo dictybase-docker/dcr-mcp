@@ -1,14 +1,11 @@
 package main
 
 import (
-	"context"
-	"encoding/json"
 	"fmt"
 	"log"
 	"os"
 
 	"github.com/dictybase/dcr-mcp/pkg/tools/calculator"
-	"github.com/mark3labs/mcp-go/mcp"
 	"github.com/mark3labs/mcp-go/server"
 )
 
@@ -29,19 +26,7 @@ func main() {
 	// Register calculator tool
 	mcpServer.AddTool(
 		calcTool.GetTool(),
-		func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-			paramsJSON, err := json.Marshal(request.Params.Arguments)
-			if err != nil {
-				return nil, err
-			}
-
-			result, err := calcTool.Execute(string(paramsJSON))
-			if err != nil {
-				return mcp.NewToolResultText("Error: " + err.Error()), nil
-			}
-
-			return mcp.NewToolResultText(result), nil
-		},
+		calcTool.Handler(),
 	)
 
 	// Create an SSE server for HTTP communication
