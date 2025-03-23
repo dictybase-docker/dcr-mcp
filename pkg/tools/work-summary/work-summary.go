@@ -38,25 +38,14 @@ const (
 )
 
 // GitAnalyzer handles git repository analysis operations including cloning
-// repositories, parsing dates, retrieving commit histories within specified
-// date ranges, and generating summaries of commit messages using AI. It
-// maintains its own logger for operation tracking and date parsing
-// configuration.
+// repositories, parsing dates, and retrieving commit histories within specified
+// date ranges.
 type GitAnalyzer struct {
-	logger       *log.Logger
-	dateConfig   *dps.Configuration
-	openAIClient *openai.Client
-	openAIModel  string
+	logger     *log.Logger
+	dateConfig *dps.Configuration
 }
 
-// OpenAIConfig holds configuration for OpenAI client
-type OpenAIConfig struct {
-	APIKey  string
-	BaseURL string
-	Model   string
-}
-
-// CommitRangeParams holds parameters for listing commits in a date range
+// CommitRangeParams holds parameters for listing commits in a date range.
 type CommitRangeParams struct {
 	Repo   *git.Repository
 	Start  time.Time
@@ -64,8 +53,32 @@ type CommitRangeParams struct {
 	Author string
 }
 
-// NewGitAnalyzer creates a new GitAnalyzer with optional OpenAI configuration
-func NewGitAnalyzer(openAIConfig *OpenAIConfig) *GitAnalyzer {
+// GitAnalyzerOption defines a functional option for configuring GitAnalyzer.
+type GitAnalyzerOption func(*GitAnalyzer)
+
+// WithLogger sets a custom logger for GitAnalyzer.
+func WithLogger(logger *log.Logger) GitAnalyzerOption {
+	return func(ga *GitAnalyzer) {
+		ga.logger = logger
+	}
+}
+
+// WithCurrentTime sets a custom current time for date parsing.
+func WithCurrentTime(t time.Time) GitAnalyzerOption {
+	return func(ga *GitAnalyzer) {
+		ga.dateConfig.CurrentTime = t
+	}
+}
+
+// WithTimeZone sets a custom timezone for date parsing.
+func WithTimeZone(tz *time.Location) GitAnalyzerOption {
+	return func(ga *GitAnalyzer) {
+		ga.dateConfig.DefaultTimezone = tz
+	}
+}
+
+// NewGitAnalyzer creates a new GitAnalyzer with the provided options.
+func NewGitAnalyzer(opts ...GitAnalyzerOption) *GitAnalyzer {
 	ga := &GitAnalyzer{
 		logger: log.New(
 			os.Stderr,
@@ -78,17 +91,82 @@ func NewGitAnalyzer(openAIConfig *OpenAIConfig) *GitAnalyzer {
 		},
 	}
 
-	// Only configure OpenAI client if configuration is provided
-	if openAIConfig != nil {
-		config := openai.DefaultConfig(openAIConfig.APIKey)
-		if openAIConfig.BaseURL != "" {
-			config.BaseURL = openAIConfig.BaseURL
-		}
-		ga.openAIClient = openai.NewClientWithConfig(config)
-		ga.openAIModel = openAIConfig.Model
+	// Apply all options
+	for _, opt := range opts {
+		opt(ga)
 	}
 
 	return ga
+}
+
+// SummaryClient is the interface for clients that can generate summaries.
+type SummaryClient interface {
+	SummarizeCommitMessages(ctx context.Context, commitMsgs string) (string, error)
+}
+
+// OpenAIClient implements SummaryClient using OpenAI API.
+type OpenAIClient struct {
+	client *openai.Client
+	model  string
+}
+
+// NewOpenAIClient creates a new OpenAI client with the provided configuration.
+func NewOpenAIClient(apiKey, baseURL, model string) *OpenAIClient {
+	config := openai.DefaultConfig(apiKey)
+	if baseURL != "" {
+		config.BaseURL = baseURL
+	}
+
+	return &OpenAIClient{
+		client: openai.NewClientWithConfig(config),
+		model:  model,
+	}
+}
+
+// SummarizeCommitMessages generates a summary of commit messages using OpenAI.
+func (c *OpenAIClient) SummarizeCommitMessages(ctx context.Context, commitMsgs string) (string, error) {
+	if c.client == nil {
+		return "", errors.New("OpenAI client not configured")
+	}
+
+	req := openai.ChatCompletionRequest{
+		Model:       c.model,
+		Stream:      true,
+		Temperature: 0.1, // Controls randomness in the response
+		Messages: []openai.ChatCompletionMessage{
+			{
+				Role:    openai.ChatMessageRoleSystem,
+				Content: GitSummaryPrompt,
+			},
+			{
+				Role:    openai.ChatMessageRoleUser,
+				Content: commitMsgs,
+			},
+		},
+	}
+
+	var sb strings.Builder
+	stream, err := c.client.CreateChatCompletionStream(ctx, req)
+	if err != nil {
+		return "", fmt.Errorf("OpenAI stream error: %w", err)
+	}
+	defer stream.Close()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return sb.String(), ctx.Err()
+		default:
+			resp, err := stream.Recv()
+			if errors.Is(err, io.EOF) {
+				return sb.String(), nil
+			}
+			if err != nil {
+				return sb.String(), fmt.Errorf("OpenAI stream recv error: %w", err)
+			}
+			sb.WriteString(resp.Choices[0].Delta.Content)
+		}
+	}
 }
 
 func (ga *GitAnalyzer) parseStartDate(dateStr string) (date.Date, error) {
@@ -110,28 +188,28 @@ func (ga *GitAnalyzer) parseEndDate(endDateStr string) (date.Date, error) {
 	return parsedDate, nil
 }
 
-// ParseAnalysisDates parses start and end date strings into date.Date objects
-func (ga *GitAnalyzer) ParseAnalysisDates(
-	startDate, endDate string,
-) (date.Date, date.Date, error) {
+// ParseAnalysisDates parses start and end date strings into date.Date objects.
+func (ga *GitAnalyzer) ParseAnalysisDates(startDate, endDate string) (date.Date, date.Date, error) {
 	start, err := ga.parseStartDate(startDate)
 	if err != nil {
-		return start, date.Date{}, fmt.Errorf("Invalid start date: %v", err)
+		return start, date.Date{}, fmt.Errorf("invalid start date: %w", err)
 	}
 	end, err := ga.parseEndDate(endDate)
 	if err != nil {
-		return start, end, fmt.Errorf("Invalid end date: %v", err)
+		return start, end, fmt.Errorf("invalid end date: %w", err)
 	}
 	return start, end, nil
 }
 
-// CloneAndCheckout clones a repository and checks out the specified branch
+// CloneAndCheckout clones a repository and checks out the specified branch.
 func (ga *GitAnalyzer) CloneAndCheckout(
-	repoURL, branchName string,
+	ctx context.Context, repoURL, branchName string,
 ) (*git.Repository, error) {
 	ga.logger.Printf("Analyzing repository: %s", repoURL)
 	ga.logger.Printf("Cloning branch: %s", branchName)
-	repo, err := git.Clone(
+
+	repo, err := git.CloneContext(
+		ctx,
 		memory.NewStorage(),
 		nil,
 		&git.CloneOptions{
@@ -142,15 +220,19 @@ func (ga *GitAnalyzer) CloneAndCheckout(
 		},
 	)
 	if err != nil {
-		return nil, fmt.Errorf("error in cloning repository %w", err)
+		return nil, fmt.Errorf("error cloning repository: %w", err)
 	}
 	return repo, nil
 }
 
-// ListCommitsInRange retrieves commit messages from the repository within the specified date range
+// ListCommitsInRange retrieves commit messages from the repository within the specified date range.
 func (ga *GitAnalyzer) ListCommitsInRange(
-	params CommitRangeParams,
-) (strings.Builder, error) {
+	ctx context.Context, params CommitRangeParams,
+) (string, error) {
+	if params.Repo == nil {
+		return "", errors.New("repository cannot be nil")
+	}
+
 	ga.logger.Printf(
 		"Date range: %s - %s",
 		params.Start.Format("2006-01-02"),
@@ -166,8 +248,9 @@ func (ga *GitAnalyzer) ListCommitsInRange(
 		},
 	)
 	if err != nil {
-		return buf, fmt.Errorf("Failed to get commit history: %v", err)
+		return "", fmt.Errorf("failed to get commit history: %w", err)
 	}
+
 	err = commitIter.ForEach(func(cmt *object.Commit) error {
 		if strings.Contains(cmt.Author.Name, "dependabot[bot]") ||
 			strings.Contains(cmt.Author.Name, "kodiakhq[bot]") {
@@ -186,62 +269,8 @@ func (ga *GitAnalyzer) ListCommitsInRange(
 		return nil
 	})
 	if err != nil {
-		return buf, err
+		return "", fmt.Errorf("error iterating commits: %w", err)
 	}
 
-	return buf, nil
-}
-
-// SummarizeCommitMessages generates a summary of commit messages using OpenAI
-func (ga *GitAnalyzer) SummarizeCommitMessages(
-	commitMsgs strings.Builder,
-) (strings.Builder, error) {
-	if ga.openAIClient == nil {
-		return strings.Builder{}, errors.New("OpenAI client not configured")
-	}
-
-	req := openai.ChatCompletionRequest{
-		Model:       ga.openAIModel,
-		Stream:      true,
-		Temperature: 0.1, // Controls randomness in the response
-		Messages: []openai.ChatCompletionMessage{
-			{
-				Role:    openai.ChatMessageRoleSystem,
-				Content: GitSummaryPrompt,
-			},
-			{
-				Role:    openai.ChatMessageRoleUser,
-				Content: commitMsgs.String(),
-			},
-		},
-	}
-
-	var sb strings.Builder
-	stream, err := ga.openAIClient.CreateChatCompletionStream(context.Background(), req)
-	if err != nil {
-		return sb, fmt.Errorf("OpenAI stream error: %v", err)
-	}
-	defer stream.Close()
-
-	for {
-		resp, err := stream.Recv()
-		if errors.Is(err, io.EOF) {
-			break
-		}
-		if err != nil {
-			return sb, fmt.Errorf("OpenAI stream recv error: %v", err)
-		}
-		sb.WriteString(resp.Choices[0].Delta.Content)
-	}
-	return sb, nil
-}
-
-// SetOpenAIClient allows updating the OpenAI client configuration after initialization
-func (ga *GitAnalyzer) SetOpenAIClient(config OpenAIConfig) {
-	openaiConfig := openai.DefaultConfig(config.APIKey)
-	if config.BaseURL != "" {
-		openaiConfig.BaseURL = config.BaseURL
-	}
-	ga.openAIClient = openai.NewClientWithConfig(openaiConfig)
-	ga.openAIModel = config.Model
+	return buf.String(), nil
 }
