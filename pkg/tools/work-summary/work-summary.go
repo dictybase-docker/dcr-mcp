@@ -43,8 +43,17 @@ const (
 // maintains its own logger for operation tracking and date parsing
 // configuration.
 type GitAnalyzer struct {
-	logger     *log.Logger
-	dateConfig *dps.Configuration
+	logger       *log.Logger
+	dateConfig   *dps.Configuration
+	openAIClient *openai.Client
+	openAIModel  string
+}
+
+// OpenAIConfig holds configuration for OpenAI client
+type OpenAIConfig struct {
+	APIKey  string
+	BaseURL string
+	Model   string
 }
 
 // CommitRangeParams holds parameters for listing commits in a date range
@@ -55,8 +64,9 @@ type CommitRangeParams struct {
 	Author string
 }
 
-func NewGitAnalyzer() *GitAnalyzer {
-	return &GitAnalyzer{
+// NewGitAnalyzer creates a new GitAnalyzer with optional OpenAI configuration
+func NewGitAnalyzer(openAIConfig *OpenAIConfig) *GitAnalyzer {
+	ga := &GitAnalyzer{
 		logger: log.New(
 			os.Stderr,
 			"[git-commit-summary] ",
@@ -67,6 +77,18 @@ func NewGitAnalyzer() *GitAnalyzer {
 			CurrentTime:     time.Now(),
 		},
 	}
+
+	// Only configure OpenAI client if configuration is provided
+	if openAIConfig != nil {
+		config := openai.DefaultConfig(openAIConfig.APIKey)
+		if openAIConfig.BaseURL != "" {
+			config.BaseURL = openAIConfig.BaseURL
+		}
+		ga.openAIClient = openai.NewClientWithConfig(config)
+		ga.openAIModel = openAIConfig.Model
+	}
+
+	return ga
 }
 
 func (ga *GitAnalyzer) parseStartDate(dateStr string) (date.Date, error) {
@@ -88,6 +110,7 @@ func (ga *GitAnalyzer) parseEndDate(endDateStr string) (date.Date, error) {
 	return parsedDate, nil
 }
 
+// ParseAnalysisDates parses start and end date strings into date.Date objects
 func (ga *GitAnalyzer) ParseAnalysisDates(
 	startDate, endDate string,
 ) (date.Date, date.Date, error) {
@@ -102,6 +125,7 @@ func (ga *GitAnalyzer) ParseAnalysisDates(
 	return start, end, nil
 }
 
+// CloneAndCheckout clones a repository and checks out the specified branch
 func (ga *GitAnalyzer) CloneAndCheckout(
 	repoURL, branchName string,
 ) (*git.Repository, error) {
@@ -123,6 +147,7 @@ func (ga *GitAnalyzer) CloneAndCheckout(
 	return repo, nil
 }
 
+// ListCommitsInRange retrieves commit messages from the repository within the specified date range
 func (ga *GitAnalyzer) ListCommitsInRange(
 	params CommitRangeParams,
 ) (strings.Builder, error) {
@@ -150,7 +175,7 @@ func (ga *GitAnalyzer) ListCommitsInRange(
 		}
 
 		// Skip commits not from the specified author if author filter is provided
-		if !strings.Contains(
+		if params.Author != "" && !strings.Contains(
 			strings.ToLower(cmt.Author.Name),
 			strings.ToLower(params.Author),
 		) {
@@ -167,16 +192,16 @@ func (ga *GitAnalyzer) ListCommitsInRange(
 	return buf, nil
 }
 
+// SummarizeCommitMessages generates a summary of commit messages using OpenAI
 func (ga *GitAnalyzer) SummarizeCommitMessages(
-	apiKey, model, baseURL string,
 	commitMsgs strings.Builder,
 ) (strings.Builder, error) {
-	config := openai.DefaultConfig(apiKey)
-	config.BaseURL = baseURL
-	client := openai.NewClientWithConfig(config)
+	if ga.openAIClient == nil {
+		return strings.Builder{}, errors.New("OpenAI client not configured")
+	}
 
 	req := openai.ChatCompletionRequest{
-		Model:       model,
+		Model:       ga.openAIModel,
 		Stream:      true,
 		Temperature: 0.1, // Controls randomness in the response
 		Messages: []openai.ChatCompletionMessage{
@@ -192,7 +217,7 @@ func (ga *GitAnalyzer) SummarizeCommitMessages(
 	}
 
 	var sb strings.Builder
-	stream, err := client.CreateChatCompletionStream(context.Background(), req)
+	stream, err := ga.openAIClient.CreateChatCompletionStream(context.Background(), req)
 	if err != nil {
 		return sb, fmt.Errorf("OpenAI stream error: %v", err)
 	}
@@ -209,4 +234,14 @@ func (ga *GitAnalyzer) SummarizeCommitMessages(
 		sb.WriteString(resp.Choices[0].Delta.Content)
 	}
 	return sb, nil
+}
+
+// SetOpenAIClient allows updating the OpenAI client configuration after initialization
+func (ga *GitAnalyzer) SetOpenAIClient(config OpenAIConfig) {
+	openaiConfig := openai.DefaultConfig(config.APIKey)
+	if config.BaseURL != "" {
+		openaiConfig.BaseURL = config.BaseURL
+	}
+	ga.openAIClient = openai.NewClientWithConfig(openaiConfig)
+	ga.openAIModel = config.Model
 }
