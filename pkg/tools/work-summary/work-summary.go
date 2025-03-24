@@ -2,9 +2,7 @@ package worksummary
 
 import (
 	"context"
-	"errors"
 	"fmt"
-	"io"
 	"log"
 	"os"
 	"strings"
@@ -14,28 +12,13 @@ import (
 	"github.com/go-git/go-git/v5/plumbing"
 	"github.com/go-git/go-git/v5/plumbing/object"
 	"github.com/go-git/go-git/v5/storage/memory"
+	validator "github.com/go-playground/validator/v10"
 	dps "github.com/markusmobius/go-dateparser"
 	"github.com/markusmobius/go-dateparser/date"
-	"github.com/sashabaranov/go-openai"
 )
 
-const (
-	GitSummaryPrompt = `
-    You are an expert in summarizing git commit messages. You will be given a
-	collection of git commit messages that you will summarize by creating
-	not more than four focused bullet points. Each bullet point should:
-    1. Begin with a bold category that reflects the theme of the changes (like
-       "**User Interface**" or "**Performance**")
-    2. Contain multiple sentences that explain what was changed in plain language
-    3. Avoid technical jargon when possible, or explain technical terms when they must be used
-    4. Focus on the business value and user impact rather than implementation details
-
-    Present the output in markdown format, with "Work Summary" as the main
-	heading (H1). The summary should be easily understood by someone without
-	technical background, focusing on what was accomplished rather than how
-	it was done.
-    `
-)
+// Global validator instance
+var validate = validator.New()
 
 // GitAnalyzer handles git repository analysis operations including cloning
 // repositories, parsing dates, and retrieving commit histories within specified
@@ -47,9 +30,9 @@ type GitAnalyzer struct {
 
 // CommitRangeParams holds parameters for listing commits in a date range.
 type CommitRangeParams struct {
-	Repo   *git.Repository
-	Start  time.Time
-	End    time.Time
+	Repo   *git.Repository `validate:"required"`
+	Start  time.Time       `validate:"required"`
+	End    time.Time       `validate:"required"`
 	Author string
 }
 
@@ -99,77 +82,12 @@ func NewGitAnalyzer(opts ...GitAnalyzerOption) *GitAnalyzer {
 	return ga
 }
 
-// SummaryClient is the interface for clients that can generate summaries.
-type SummaryClient interface {
-	SummarizeCommitMessages(ctx context.Context, commitMsgs string) (string, error)
-}
-
-// OpenAIClient implements SummaryClient using OpenAI API.
-type OpenAIClient struct {
-	client *openai.Client
-	model  string
-}
-
-// NewOpenAIClient creates a new OpenAI client with the provided configuration.
-func NewOpenAIClient(apiKey, baseURL, model string) *OpenAIClient {
-	config := openai.DefaultConfig(apiKey)
-	if baseURL != "" {
-		config.BaseURL = baseURL
-	}
-
-	return &OpenAIClient{
-		client: openai.NewClientWithConfig(config),
-		model:  model,
-	}
-}
-
-// SummarizeCommitMessages generates a summary of commit messages using OpenAI.
-func (c *OpenAIClient) SummarizeCommitMessages(ctx context.Context, commitMsgs string) (string, error) {
-	if c.client == nil {
-		return "", errors.New("OpenAI client not configured")
-	}
-
-	req := openai.ChatCompletionRequest{
-		Model:       c.model,
-		Stream:      true,
-		Temperature: 0.1, // Controls randomness in the response
-		Messages: []openai.ChatCompletionMessage{
-			{
-				Role:    openai.ChatMessageRoleSystem,
-				Content: GitSummaryPrompt,
-			},
-			{
-				Role:    openai.ChatMessageRoleUser,
-				Content: commitMsgs,
-			},
-		},
-	}
-
-	var sb strings.Builder
-	stream, err := c.client.CreateChatCompletionStream(ctx, req)
-	if err != nil {
-		return "", fmt.Errorf("OpenAI stream error: %w", err)
-	}
-	defer stream.Close()
-
-	for {
-		select {
-		case <-ctx.Done():
-			return sb.String(), ctx.Err()
-		default:
-			resp, err := stream.Recv()
-			if errors.Is(err, io.EOF) {
-				return sb.String(), nil
-			}
-			if err != nil {
-				return sb.String(), fmt.Errorf("OpenAI stream recv error: %w", err)
-			}
-			sb.WriteString(resp.Choices[0].Delta.Content)
-		}
-	}
-}
-
 func (ga *GitAnalyzer) parseStartDate(dateStr string) (date.Date, error) {
+	// Validate input
+	if err := validate.Var(dateStr, "required"); err != nil {
+		return date.Date{}, fmt.Errorf("start date cannot be empty: %w", err)
+	}
+
 	parsedDate, err := dps.Parse(ga.dateConfig, dateStr)
 	if err != nil || parsedDate.Time.IsZero() {
 		return parsedDate, fmt.Errorf("could not parse date '%s'", dateStr)
@@ -189,7 +107,17 @@ func (ga *GitAnalyzer) parseEndDate(endDateStr string) (date.Date, error) {
 }
 
 // ParseAnalysisDates parses start and end date strings into date.Date objects.
-func (ga *GitAnalyzer) ParseAnalysisDates(startDate, endDate string) (date.Date, date.Date, error) {
+func (ga *GitAnalyzer) ParseAnalysisDates(
+	startDate, endDate string,
+) (date.Date, date.Date, error) {
+	// Validate startDate
+	if err := validate.Var(startDate, "required"); err != nil {
+		return date.Date{}, date.Date{}, fmt.Errorf(
+			"start date cannot be empty: %w",
+			err,
+		)
+	}
+
 	start, err := ga.parseStartDate(startDate)
 	if err != nil {
 		return start, date.Date{}, fmt.Errorf("invalid start date: %w", err)
@@ -205,6 +133,14 @@ func (ga *GitAnalyzer) ParseAnalysisDates(startDate, endDate string) (date.Date,
 func (ga *GitAnalyzer) CloneAndCheckout(
 	ctx context.Context, repoURL, branchName string,
 ) (*git.Repository, error) {
+	// Validate inputs
+	if err := validate.Var(repoURL, "required"); err != nil {
+		return nil, fmt.Errorf("repository URL cannot be empty: %w", err)
+	}
+	if err := validate.Var(branchName, "required"); err != nil {
+		return nil, fmt.Errorf("branch name cannot be empty: %w", err)
+	}
+
 	ga.logger.Printf("Analyzing repository: %s", repoURL)
 	ga.logger.Printf("Cloning branch: %s", branchName)
 
@@ -229,8 +165,9 @@ func (ga *GitAnalyzer) CloneAndCheckout(
 func (ga *GitAnalyzer) ListCommitsInRange(
 	ctx context.Context, params CommitRangeParams,
 ) (string, error) {
-	if params.Repo == nil {
-		return "", errors.New("repository cannot be nil")
+	// Validate params using validator
+	if err := validate.Struct(params); err != nil {
+		return "", fmt.Errorf("invalid commit range parameters: %w", err)
 	}
 
 	ga.logger.Printf(
@@ -252,6 +189,12 @@ func (ga *GitAnalyzer) ListCommitsInRange(
 	}
 
 	err = commitIter.ForEach(func(cmt *object.Commit) error {
+		select {
+		case <-ctx.Done():
+			return ctx.Err()
+		default:
+		}
+
 		if strings.Contains(cmt.Author.Name, "dependabot[bot]") ||
 			strings.Contains(cmt.Author.Name, "kodiakhq[bot]") {
 			return nil
