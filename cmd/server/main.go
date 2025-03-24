@@ -5,7 +5,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/dictybase/dcr-mcp/pkg/tools/calculator"
+	"github.com/dictybase/dcr-mcp/pkg/tools/gitsummary"
 	"github.com/mark3labs/mcp-go/server"
 )
 
@@ -15,23 +15,21 @@ func main() {
 		server.WithToolCapabilities(true),
 		server.WithLogging(),
 	)
-
-	// Create calculator tool
-	calcTool, err := calculator.NewCalculator()
+	// Create and register git-summary tool
+	gitSummaryTool, err := gitsummary.NewGitSummaryTool(
+		log.New(os.Stderr, "[git-summary] ", log.LstdFlags),
+	)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to create calculator tool: %v", err)
+		fmt.Fprintf(os.Stderr, "failed to create git-summary tool: %v", err)
 		os.Exit(1)
 	}
-
-	// Register calculator tool
 	mcpServer.AddTool(
-		calcTool.GetTool(),
-		calcTool.Handler(),
+		gitSummaryTool.GetTool(),
+		gitSummaryTool.Handler(),
 	)
 
 	// Create an SSE server for HTTP communication
 	sseServer := server.NewSSEServer(mcpServer)
-
 	// Start server
 	port := os.Getenv("DCR_MCP_PORT")
 	if len(port) == 0 {
