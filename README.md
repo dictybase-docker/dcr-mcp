@@ -13,14 +13,65 @@ A simple MCP (Model Control Protocol) server implementation using [mcp-go](https
 
 - Go 1.23 or later
 
+### Installation
+
+You can install the DCR MCP server directly using the Go tool:
+
+```bash
+go install github.com/dictybase-docker/dcr-mcp/cmd/server@latest
+```
+
+This will install the executable in your `$GOPATH/bin` directory (or `$GOBIN` if set).
+
+### Building from Source
+
+Clone the repository:
+
+```bash
+git clone https://github.com/dictybase-docker/dcr-mcp.git
+cd dcr-mcp
+go build -o dcr-mcp ./cmd/server
+```
+
 ### Running the Server
+
+If installed via `go install`:
+
+```bash
+server
+```
+
+If built from source:
 
 ```bash
 go run cmd/server/main.go
 ```
 
+Or use the compiled binary:
+
+```bash
+./dcr-mcp
+```
+
 By default, the server runs on port 8080. You can change the port by setting the
 `DCR_MCP_PORT` environment variable.
+
+### Configuration
+
+The MCP server can be configured through environment variables:
+
+- `DCR_MCP_PORT`: Port to run the server on (default: 8080)
+- `OPENAI_API_KEY`: Your OpenAI API key for tools that require it
+- `MCP_LOG_LEVEL`: Logging level (debug, info, warn, error - default: info)
+- `GIT_TIMEOUT`: Timeout for git operations in seconds (default: 30)
+
+You can also configure the server by creating a `.env` file in the project root:
+
+```
+OPENAI_API_KEY=your_openai_api_key
+DCR_MCP_PORT=8081
+MCP_LOG_LEVEL=debug
+```
 
 ### Tools
 
