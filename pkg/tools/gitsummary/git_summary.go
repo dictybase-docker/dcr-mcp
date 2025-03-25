@@ -24,11 +24,11 @@ type GitSummaryTool struct {
 
 // GitSummaryRequest represents the parameters for the git summary request.
 type GitSummaryRequest struct {
-	RepoURL    string `validate:"required"`
-	Branch     string `validate:"required"`
-	StartDate  string `validate:"required"`
-	EndDate    string
-	Author     string
+	RepoURL   string `validate:"required"`
+	Branch    string `validate:"required"`
+	StartDate string `validate:"required"`
+	EndDate   string
+	Author     string `validate:"required"`
 	APIKey     string `validate:"required"`
 	ModelName  string `validate:"required"`
 	OpenAIBase string
@@ -70,7 +70,8 @@ func NewGitSummaryTool(logger *log.Logger) (*GitSummaryTool, error) {
 		),
 		mcp.WithString(
 			"author",
-			mcp.Description("Filter commits by author name (optional)"),
+			mcp.Description("Filter commits by author name"),
+			mcp.Required(),
 		),
 		mcp.WithString(
 			"api_key",

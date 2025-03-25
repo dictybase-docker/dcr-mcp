@@ -33,7 +33,7 @@ type CommitRangeParams struct {
 	Repo   *git.Repository `validate:"required"`
 	Start  time.Time       `validate:"required"`
 	End    time.Time       `validate:"required"`
-	Author string
+	Author string          `validate:"required"`
 }
 
 // GitAnalyzerOption defines a functional option for configuring GitAnalyzer.

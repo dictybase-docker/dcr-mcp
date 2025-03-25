@@ -45,7 +45,7 @@ The tool accepts the following parameters:
   "branch": "main",
   "start_date": "2023-01-01",
   "end_date": "2023-12-31",
-  "author": "optional-author-name",
+  "author": "required-author-name",
   "api_key": "your-openai-api-key",
   "model_name": "gpt-4-turbo",
   "openai_base": "https://api.openai.com/v1" 
@@ -58,7 +58,7 @@ The tool accepts the following parameters:
 - `branch` (required): The branch to analyze
 - `start_date` (required): The start date for commit analysis (in any standard format)
 - `end_date` (optional): The end date for commit analysis (defaults to current date)
-- `author` (optional): Filter commits by author name (case-insensitive contains match)
+- `author` (required): Filter commits by author name (case-insensitive contains match)
 - `api_key` (required): Your OpenAI API key
 - `model_name` (required): The OpenAI model to use (e.g., "gpt-4-turbo")
 - `openai_base` (optional): Custom OpenAI API base URL (defaults to official API)
