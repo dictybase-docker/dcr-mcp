@@ -27,18 +27,7 @@ func main() {
 		gitSummaryTool.GetTool(),
 		gitSummaryTool.Handler,
 	)
-
-	// Create an SSE server for HTTP communication
-	sseServer := server.NewSSEServer(mcpServer)
-	// Start server
-	port := os.Getenv("DCR_MCP_PORT")
-	if len(port) == 0 {
-		port = "8080"
-	}
-	port = fmt.Sprintf(":%s", port)
-
-	log.Printf("Starting MCP server on port %s", port)
-	if err := sseServer.Start(port); err != nil {
+	if err := server.ServeStdio(mcpServer); err != nil {
 		fmt.Fprintf(os.Stderr, "server error %v", err)
 	}
 }
