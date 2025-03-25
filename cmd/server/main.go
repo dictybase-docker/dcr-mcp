@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/dictybase/dcr-mcp/pkg/tools/gitsummary"
+	"github.com/dictybase/dcr-mcp/pkg/tools/markdowntool"
 	"github.com/mark3labs/mcp-go/server"
 )
 
@@ -27,6 +28,20 @@ func main() {
 		gitSummaryTool.GetTool(),
 		gitSummaryTool.Handler,
 	)
+	
+	// Create and register markdown tool
+	markdownTool, err := markdowntool.NewMarkdownTool(
+		log.New(os.Stderr, "[markdown] ", log.LstdFlags),
+	)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to create markdown tool: %v", err)
+		os.Exit(1)
+	}
+	mcpServer.AddTool(
+		markdownTool.GetTool(),
+		markdownTool.Handler,
+	)
+	
 	if err := server.ServeStdio(mcpServer); err != nil {
 		fmt.Fprintf(os.Stderr, "server error %v", err)
 	}
