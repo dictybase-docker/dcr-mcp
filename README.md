@@ -32,6 +32,8 @@ git clone https://github.com/dictybase-docker/dcr-mcp.git
 cd dcr-mcp
 go build -o dcr-mcp ./cmd/server
 ```
+Then copy the compiled binary to a location where it's path could be found by
+the shell. 
 
 ### Running the Server
 
@@ -56,22 +58,27 @@ Or use the compiled binary:
 By default, the server runs on port 8080. You can change the port by setting the
 `DCR_MCP_PORT` environment variable.
 
-### Configuration
+### MCP Configuration
 
-The MCP server can be configured through environment variables:
+You can create an MCP JSON configuration file to connect to this server from compatible tools:
 
-- `DCR_MCP_PORT`: Port to run the server on (default: 8080)
-- `OPENAI_API_KEY`: Your OpenAI API key for tools that require it
-- `MCP_LOG_LEVEL`: Logging level (debug, info, warn, error - default: info)
-- `GIT_TIMEOUT`: Timeout for git operations in seconds (default: 30)
-
-You can also configure the server by creating a `.env` file in the project root:
-
+```json
+{
+  "name": "dcr-mcp",
+  "url": "http://localhost:8080/api/v1",
+  "api_key": "your_api_key_if_needed",
+  "tools": [
+    {
+      "name": "git_summary",
+      "description": "Generate summaries of git commit messages using OpenAI",
+      "required_params": ["repo_url", "branch", "start_date", "author"],
+      "optional_params": ["end_date"]
+    }
+  ]
+}
 ```
-OPENAI_API_KEY=your_openai_api_key
-DCR_MCP_PORT=8081
-MCP_LOG_LEVEL=debug
-```
+
+Save this configuration as `dcr-mcp.json` and load it with your MCP-compatible client.
 
 ### Tools
 
