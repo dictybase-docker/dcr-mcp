@@ -5,8 +5,8 @@ go 1.23.0
 toolchain go1.23.6
 
 require (
-	github.com/Oudwins/zog v0.18.4
 	github.com/go-git/go-git/v5 v5.14.0
+	github.com/go-playground/validator/v10 v10.25.0
 	github.com/mark3labs/mcp-go v0.15.0
 	github.com/markusmobius/go-dateparser v1.2.3
 	github.com/sashabaranov/go-openai v1.38.1
@@ -25,7 +25,6 @@ require (
 	github.com/go-git/go-billy/v5 v5.6.2 // indirect
 	github.com/go-playground/locales v0.14.1 // indirect
 	github.com/go-playground/universal-translator v0.18.1 // indirect
-	github.com/go-playground/validator/v10 v10.25.0 // indirect
 	github.com/golang/groupcache v0.0.0-20241129210726-2c02b8208cf8 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hablullah/go-hijri v1.0.2 // indirect
