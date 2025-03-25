@@ -4,8 +4,8 @@ A simple MCP (Model Control Protocol) server implementation using [mcp-go](https
 
 ## Features
 
-- Basic MCP server implementation
 - Git Summary tool for analyzing commit messages
+- Markdown tool for converting Markdown to HTML
 
 ## Getting Started
 
@@ -87,7 +87,6 @@ user-friendly summary organized by categories.
 
 ##### Usage
 
-
 ###### Parameters
 
 - `repo_url` (required): The URL of the git repository to analyze
@@ -111,6 +110,35 @@ considerations.
 **Documentation**
 - Added comprehensive README with usage examples and parameter descriptions. New
 users will find it easier to understand how to use the tool effectively."
+```
+
+#### Markdown Tool
+
+This MCP tool converts Markdown content to HTML using the Goldmark markdown
+parser. It supports GitHub Flavored Markdown, syntax highlighting for code
+blocks, and other extended features.
+
+##### Features
+
+- GitHub Flavored Markdown (GFM) support
+- Syntax highlighting for code blocks
+- Emoji support
+- YAML metadata extraction
+- Typographic extensions
+- Table formatting
+
+##### Usage
+
+###### Parameters
+
+- `content` (required): The markdown content to convert to HTML
+
+
+###### Example Response
+
+```html
+<h1 id="hello-world">Hello, World!</h1>
+<p>This is a <strong>markdown</strong> example with <em>formatting</em>.</p>
 ```
 
 ## Testing
