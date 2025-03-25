@@ -60,7 +60,7 @@ The tool accepts the following parameters:
 - `end_date` (optional): The end date for commit analysis (defaults to current date)
 - `author` (required): Filter commits by author name (case-insensitive contains match)
 - `api_key` (required): Your OpenAI API key
-- `model_name` (required): The OpenAI model to use (e.g., "gpt-4-turbo")
+- `model_name` (optional): The OpenAI model to use (defaults to "google/gemini-2.0-flash-001")
 - `openai_base` (optional): Custom OpenAI API base URL (defaults to official API)
 
 ###### Example Response
