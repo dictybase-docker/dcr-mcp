@@ -28,10 +28,8 @@ type GitSummaryRequest struct {
 	Branch    string `validate:"required"`
 	StartDate string `validate:"required"`
 	EndDate   string
-	Author     string `validate:"required"`
-	APIKey     string `validate:"required"`
-	ModelName  string `validate:"required"`
-	OpenAIBase string
+	Author    string `validate:"required"`
+	APIKey    string `validate:"required"`
 }
 
 // GitSummaryResponse represents the response from the git summary request.
@@ -80,8 +78,9 @@ func NewGitSummaryTool(logger *log.Logger) (*GitSummaryTool, error) {
 		),
 		mcp.WithString(
 			"model_name",
-			mcp.Description("OpenAI model name (e.g., 'gpt-4-turbo')"),
-			mcp.Required(),
+			mcp.Description(
+				"OpenAI model name (defaults to 'google/gemini-2.0-flash-001')",
+			),
 		),
 		mcp.WithString(
 			"openai_base",
@@ -129,25 +128,18 @@ func (g *GitSummaryTool) Handler() func(
 	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 		args := request.Params.Arguments
 		params := GitSummaryRequest{
-			RepoURL:    args["repo_url"].(string),
-			Branch:     args["branch"].(string),
-			StartDate:  args["start_date"].(string),
-			EndDate:    args["end_date"].(string),
-			Author:     args["author"].(string),
-			APIKey:     args["api_key"].(string),
-			ModelName:  args["model_name"].(string),
-			OpenAIBase: args["openai_base"].(string),
+			RepoURL:   args["repo_url"].(string),
+			Branch:    args["branch"].(string),
+			StartDate: args["start_date"].(string),
+			EndDate:   args["end_date"].(string),
+			Author:    args["author"].(string),
+			APIKey:    args["api_key"].(string),
 		}
 		if err := validate.Struct(params); err != nil {
 			return nil, fmt.Errorf("Validation error: %v", err)
 		}
-		openaiConfig := worksummary.OpenAIConfig{
-			APIKey:  params.APIKey,
-			BaseURL: params.OpenAIBase,
-			Model:   params.ModelName,
-		}
 
-		client, err := worksummary.NewOpenAIClient(openaiConfig)
+		client, err := worksummary.NewOpenAIClient(params.APIKey)
 		if err != nil {
 			return nil, fmt.Errorf("Error initializing OpenAI client: %v", err)
 		}
