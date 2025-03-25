@@ -6,7 +6,7 @@ import (
 	"log"
 	"os"
 
-	"github.com/dictybase/dcr-mcp/pkg/tools/worksummary"
+	"github.com/dictybase/dcr-mcp/pkg/worksummary"
 	"github.com/go-playground/validator/v10"
 	"github.com/mark3labs/mcp-go/mcp"
 )
