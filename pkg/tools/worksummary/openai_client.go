@@ -36,35 +36,56 @@ type SummaryClient interface {
 	) (string, error)
 }
 
-// OpenAIConfig holds configuration for OpenAI client
-type OpenAIConfig struct {
-	APIKey  string `validate:"required"`
-	BaseURL string
-	Model   string `validate:"required"`
-}
-
 // OpenAIClient implements SummaryClient using OpenAI API.
 type OpenAIClient struct {
 	client *openai.Client
 	model  string
+	config openai.ClientConfig
+}
+
+// OpenAIClientOption defines a functional option for configuring OpenAIClient
+type OpenAIClientOption func(*OpenAIClient)
+
+// WithBaseURL sets a custom base URL for the OpenAI client
+func WithBaseURL(baseURL string) OpenAIClientOption {
+	return func(c *OpenAIClient) {
+		if baseURL != "" {
+			c.config.BaseURL = baseURL
+		}
+	}
+}
+
+// WithModel sets a custom model for the OpenAI client
+func WithModel(model string) OpenAIClientOption {
+	return func(c *OpenAIClient) {
+		if model != "" {
+			c.model = model
+		}
+	}
 }
 
 // NewOpenAIClient creates a new OpenAI client with the provided configuration.
-func NewOpenAIClient(config OpenAIConfig) (*OpenAIClient, error) {
-	// Validate the config
-	if err := validate.Struct(config); err != nil {
-		return nil, err
+// Uses functional option pattern, default value of BaseURL is
+// https://openrouter.ai/api/v1.
+func NewOpenAIClient(
+	apiKey string,
+	opts ...OpenAIClientOption,
+) (*OpenAIClient, error) {
+	if err := validate.Var(apiKey, "required"); err != nil {
+		return nil, errors.New("API key is required")
 	}
-
-	openaiConfig := openai.DefaultConfig(config.APIKey)
-	if config.BaseURL != "" {
-		openaiConfig.BaseURL = config.BaseURL
+	llm := &OpenAIClient{
+		model:  "google/gemini-2.0-flash-001",
+		config: openai.DefaultConfig(apiKey),
 	}
+	llm.config.BaseURL = "https://openrouter.ai/api/v1"
+	// Apply all options
+	for _, opt := range opts {
+		opt(llm)
+	}
+	llm.client = openai.NewClientWithConfig(llm.config)
 
-	return &OpenAIClient{
-		client: openai.NewClientWithConfig(openaiConfig),
-		model:  config.Model,
-	}, nil
+	return llm, nil
 }
 
 // SummarizeCommitMessages generates a summary of commit messages using OpenAI.
@@ -72,15 +93,9 @@ func (c *OpenAIClient) SummarizeCommitMessages(
 	ctx context.Context,
 	commitMsgs string,
 ) (string, error) {
-	if c.client == nil {
-		return "", errors.New("OpenAI client not configured")
-	}
-
-	// Validate input
 	if err := validate.Var(commitMsgs, "required"); err != nil {
 		return "", fmt.Errorf("commit messages cannot be empty: %w", err)
 	}
-
 	req := openai.ChatCompletionRequest{
 		Model:       c.model,
 		Stream:      true,
