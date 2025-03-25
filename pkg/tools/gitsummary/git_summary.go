@@ -114,13 +114,19 @@ func (g *GitSummaryTool) Handler(
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
 	args := request.Params.Arguments
+	
+	// Create request with required parameters
 	params := GitSummaryRequest{
 		RepoURL:   args["repo_url"].(string),
 		Branch:    args["branch"].(string),
 		StartDate: args["start_date"].(string),
-		EndDate:   args["end_date"].(string),
 		Author:    args["author"].(string),
 		APIKey:    os.Getenv("OPENAI_API_KEY"),
+	}
+	
+	// Only add end_date if it was provided in the arguments
+	if endDate, ok := args["end_date"].(string); ok && endDate != "" {
+		params.EndDate = endDate
 	}
 	if err := validate.Struct(params); err != nil {
 		return nil, fmt.Errorf("Validation error: %v", err)
