@@ -47,8 +47,8 @@ The tool accepts the following parameters:
   "end_date": "2023-12-31",
   "author": "required-author-name",
   "api_key": "your-openai-api-key",
-  "model_name": "gpt-4-turbo",
-  "openai_base": "https://api.openai.com/v1" 
+  "model_name": "google/gemini-2.0-flash-001",
+  "openai_base": "https://openrouter.ai/api/v1" 
 }
 ```
 
@@ -59,7 +59,7 @@ The tool accepts the following parameters:
 - `start_date` (required): The start date for commit analysis (in any standard format)
 - `end_date` (optional): The end date for commit analysis (defaults to current date)
 - `author` (required): Filter commits by author name (case-insensitive contains match)
-- `api_key` (required): Your OpenAI API key
+- `api_key` (optional): Your OpenAI API key (defaults to OPENAI_API_KEY environment variable)
 - `model_name` (optional): The OpenAI model to use (defaults to "google/gemini-2.0-flash-001")
 - `openai_base` (optional): Custom OpenAI API base URL (defaults to official API)
 

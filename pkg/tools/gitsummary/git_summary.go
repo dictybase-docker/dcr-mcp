@@ -67,12 +67,6 @@ func NewGitSummaryTool(logger *log.Logger) (*GitSummaryTool, error) {
 			mcp.Description("Filter commits by author name"),
 			mcp.Required(),
 		),
-		mcp.WithString(
-			"api_key",
-			mcp.Description(
-				"OpenAI API key (optional, defaults to OPENAI_API_KEY environment variable)",
-			),
-		),
 	)
 
 	analyzer := worksummary.NewGitAnalyzer(
