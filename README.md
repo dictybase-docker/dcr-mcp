@@ -52,14 +52,19 @@ user-friendly summary organized by categories.
 
 ###### Example Response
 
-"# Work Summary\n\n**Feature Enhancements**\n- Added support for filtering
-commits by author name. Users can now specify an optional author parameter to
-focus on contributions from specific team members.\n\n**Bug Fixes**\n- Fixed
-date parsing issues that were causing incorrect commit ranges. The system now
-correctly handles various date formats and timezone
-considerations.\n\n**Documentation**\n- Added comprehensive README with usage
-examples and parameter descriptions. New users will find it easier to understand
-how to use the tool effectively."
+```markdown
+# Work Summary
+**Feature Enhancements**
+- Added support for filtering commits by author name. Users can now specify an
+optional author parameter to focus on contributions from specific team members.
+**Bug Fixes**
+- Fixed date parsing issues that were causing incorrect commit ranges. The
+system now correctly handles various date formats and timezone
+considerations.
+**Documentation**
+- Added comprehensive README with usage examples and parameter descriptions. New
+users will find it easier to understand how to use the tool effectively."
+```
 
 ## Testing
 
