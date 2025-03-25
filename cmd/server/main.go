@@ -25,7 +25,7 @@ func main() {
 	}
 	mcpServer.AddTool(
 		gitSummaryTool.GetTool(),
-		gitSummaryTool.Handler(),
+		gitSummaryTool.Handler,
 	)
 
 	// Create an SSE server for HTTP communication

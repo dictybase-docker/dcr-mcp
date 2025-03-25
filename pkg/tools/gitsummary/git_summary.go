@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log"
+	"os"
 
 	"github.com/dictybase/dcr-mcp/pkg/tools/worksummary"
 	"github.com/go-playground/validator/v10"
@@ -30,11 +31,6 @@ type GitSummaryRequest struct {
 	EndDate   string
 	Author    string `validate:"required"`
 	APIKey    string `validate:"required"`
-}
-
-// GitSummaryResponse represents the response from the git summary request.
-type GitSummaryResponse struct {
-	Summary string `json:"summary"`
 }
 
 // NewGitSummaryTool creates a new GitSummaryTool instance.
@@ -73,18 +69,9 @@ func NewGitSummaryTool(logger *log.Logger) (*GitSummaryTool, error) {
 		),
 		mcp.WithString(
 			"api_key",
-			mcp.Description("OpenAI API key"),
-			mcp.Required(),
-		),
-		mcp.WithString(
-			"model_name",
 			mcp.Description(
-				"OpenAI model name (defaults to 'google/gemini-2.0-flash-001')",
+				"OpenAI API key (optional, defaults to OPENAI_API_KEY environment variable)",
 			),
-		),
-		mcp.WithString(
-			"openai_base",
-			mcp.Description("Custom OpenAI API base URL (optional)"),
 		),
 	)
 
@@ -122,34 +109,33 @@ func (g *GitSummaryTool) GetTool() mcp.Tool {
 }
 
 // Handler returns a function that handles tool execution requests
-func (g *GitSummaryTool) Handler() func(
-	ctx context.Context, request mcp.CallToolRequest,
+func (g *GitSummaryTool) Handler(
+	ctx context.Context,
+	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
-	return func(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
-		args := request.Params.Arguments
-		params := GitSummaryRequest{
-			RepoURL:   args["repo_url"].(string),
-			Branch:    args["branch"].(string),
-			StartDate: args["start_date"].(string),
-			EndDate:   args["end_date"].(string),
-			Author:    args["author"].(string),
-			APIKey:    args["api_key"].(string),
-		}
-		if err := validate.Struct(params); err != nil {
-			return nil, fmt.Errorf("Validation error: %v", err)
-		}
-
-		client, err := worksummary.NewOpenAIClient(params.APIKey)
-		if err != nil {
-			return nil, fmt.Errorf("Error initializing OpenAI client: %v", err)
-		}
-		summary, err := g.GenerateSummary(ctx, client, params)
-		if err != nil {
-			return nil, fmt.Errorf("Error generating summary: %v", err)
-		}
-
-		return mcp.NewToolResultText(summary), nil
+	args := request.Params.Arguments
+	params := GitSummaryRequest{
+		RepoURL:   args["repo_url"].(string),
+		Branch:    args["branch"].(string),
+		StartDate: args["start_date"].(string),
+		EndDate:   args["end_date"].(string),
+		Author:    args["author"].(string),
+		APIKey:    os.Getenv("OPENAI_API_KEY"),
 	}
+	if err := validate.Struct(params); err != nil {
+		return nil, fmt.Errorf("Validation error: %v", err)
+	}
+
+	client, err := worksummary.NewOpenAIClient(params.APIKey)
+	if err != nil {
+		return nil, fmt.Errorf("Error initializing OpenAI client: %v", err)
+	}
+	summary, err := g.GenerateSummary(ctx, client, params)
+	if err != nil {
+		return nil, fmt.Errorf("Error generating summary: %v", err)
+	}
+
+	return mcp.NewToolResultText(summary), nil
 }
 
 // GenerateSummary generates a summary of git commit messages.
