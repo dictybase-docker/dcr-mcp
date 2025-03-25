@@ -37,48 +37,37 @@ the shell.
 
 ### Running the Server
 
-If installed via `go install`:
-
-```bash
-server
-```
-
-If built from source:
-
-```bash
-go run cmd/server/main.go
-```
-
-Or use the compiled binary:
-
-```bash
-./dcr-mcp
-```
-
-By default, the server runs on port 8080. You can change the port by setting the
-`DCR_MCP_PORT` environment variable.
-
-### MCP Configuration
-
-You can create an MCP JSON configuration file to connect to this server from compatible tools:
+Create an MCP JSON configuration file to connect to this server from compatible tools:
 
 ```json
+
 {
-  "name": "dcr-mcp",
-  "url": "http://localhost:8080/api/v1",
-  "api_key": "your_api_key_if_needed",
-  "tools": [
-    {
-      "name": "git_summary",
-      "description": "Generate summaries of git commit messages using OpenAI",
-      "required_params": ["repo_url", "branch", "start_date", "author"],
-      "optional_params": ["end_date"]
-    }
-  ]
+    "mcpServers": {
+        "dcr-mcp": {
+            "command": "dcr-mcp-server",
+            "env": {
+                "OPENAI_API_KEY": "apixxxxx",
+            }
+        }
 }
 ```
+Save this configuration as `mcp.json` (or any other name) and load it with your MCP-compatible client.
 
-Save this configuration as `dcr-mcp.json` and load it with your MCP-compatible client.
+To add to an existing configuration just add the `dcr-mcp` section only.
+
+```json
+
+{
+        "dcr-mcp": {
+            "command": "dcr-mcp-server",
+            "env": {
+                "OPENAI_API_KEY": "apixxxxx",
+            }
+        }
+}
+
+```
+
 
 ### Tools
 
