@@ -40,17 +40,6 @@ user-friendly summary organized by categories.
 
 ##### Usage
 
-The tool accepts the following parameters:
-
-```json
-{
-  "repo_url": "https://github.com/username/repo",
-  "branch": "main",
-  "start_date": "2023-01-01",
-  "end_date": "2023-12-31",
-  "author": "author-name"
-}
-```
 
 ###### Parameters
 
@@ -60,6 +49,7 @@ The tool accepts the following parameters:
 - `end_date` (optional): The end date for commit analysis (defaults to current date)
 - `author` (required): Filter commits by author name (case-insensitive contains match)
 - `api_key` (required): Your OpenAI API key (defaults to OPENAI_API_KEY environment variable)
+
 ###### Example Response
 
 "# Work Summary\n\n**Feature Enhancements**\n- Added support for filtering
