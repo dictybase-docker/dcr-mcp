@@ -20,7 +20,7 @@ type EmailPrompt struct {
 func NewEmailPrompt(logger *log.Logger) (*EmailPrompt, error) {
 	// Define the dynamic email prompt template
 	prompt := mcp.NewPrompt(
-		"generate_casual_email", // Unique name for the prompt
+		"draft_casual_email", // Unique name for the prompt
 		mcp.WithPromptDescription(
 			"Generates a draft casual email based on sender and recipient.",
 		),
