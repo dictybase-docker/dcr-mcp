@@ -38,7 +38,7 @@ func NewEmailPrompt(logger *log.Logger) (*EmailPrompt, error) {
 
 	return &EmailPrompt{
 		Name:        "generate_email",
-		Description: "Generates a draft email based on sender and recipient.",
+		Description: "Generates a draft casual email based on sender and recipient.",
 		Prompt:      prompt,
 		Logger:      logger,
 	}, nil
