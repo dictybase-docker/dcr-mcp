@@ -6,6 +6,7 @@ A simple MCP (Model Control Protocol) server implementation using [mcp-go](https
 
 - Git Summary tool for analyzing commit messages
 - Markdown tool for converting Markdown to HTML
+- PDF tool for extracting text from PDF files
 - Email Prompt for drafting casual emails
 
 ## Getting Started
@@ -140,6 +141,33 @@ blocks, and other extended features.
 ```html
 <h1 id="hello-world">Hello, World!</h1>
 <p>This is a <strong>markdown</strong> example with <em>formatting</em>.</p>
+```
+
+#### PDF Tool (Markdown to PDF)
+
+This MCP tool converts Markdown content into a PDF document using the Goldmark
+markdown parser and the `goldmark-pdf` renderer. The generated PDF binary data
+is then Base64 encoded and returned as a text string.
+
+##### Features
+
+- Converts standard Markdown syntax to PDF format.
+- Uses pre-configured fonts (IBM Plex Serif for headings, Open Sans for body, Inconsolata for code).
+- Sets a specific link color.
+- Returns the generated PDF content as a Base64 encoded string.
+
+##### Usage
+
+###### Parameters
+
+- `content` (required): The markdown content to convert to PDF.
+
+###### Example Response
+
+The tool returns a text result containing the Base64 encoded binary data of the generated PDF.
+
+```text
+JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PC9UeXBlL0NhdGFsb2cvUGFnZXMgMyAwIFI+P... (truncated Base64 string)
 ```
 
 ### Email Prompt
