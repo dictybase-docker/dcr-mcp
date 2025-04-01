@@ -8,6 +8,7 @@ import (
 	"github.com/dictybase/dcr-mcp/pkg/prompts"
 	"github.com/dictybase/dcr-mcp/pkg/tools/gitsummary"
 	"github.com/dictybase/dcr-mcp/pkg/tools/markdowntool"
+	"github.com/dictybase/dcr-mcp/pkg/tools/pdftool" // Add this line
 	"github.com/mark3labs/mcp-go/server"
 )
 
@@ -42,6 +43,19 @@ func main() {
 	mcpServer.AddTool(
 		markdownTool.GetTool(),
 		markdownTool.Handler,
+	)
+
+	// Create and register pdf tool
+	pdfTool, err := pdftool.NewPdfTool(
+		log.New(os.Stderr, "[pdf-tool] ", log.LstdFlags),
+	)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to create pdf tool: %v", err)
+		os.Exit(1)
+	}
+	mcpServer.AddTool(
+		pdfTool.GetTool(),
+		pdfTool.Handler,
 	)
 
 	// --- Add Email Prompt ---
