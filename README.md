@@ -146,28 +146,38 @@ blocks, and other extended features.
 #### PDF Tool (Markdown to PDF)
 
 This MCP tool converts Markdown content into a PDF document using the Goldmark
-markdown parser and the `goldmark-pdf` renderer. The generated PDF binary data
-is then Base64 encoded and returned as a text string.
+markdown parser and the `goldmark-pdf` renderer. The generated PDF is saved
+to a file (defaulting to `output.pdf` or a user-specified name). The tool
+returns a confirmation message indicating the save location.
 
 ##### Features
 
 - Converts standard Markdown syntax to PDF format.
 - Uses pre-configured fonts (IBM Plex Serif for headings, Open Sans for body, Inconsolata for code).
 - Sets a specific link color.
-- Returns the generated PDF content as a Base64 encoded string.
+- Saves the generated PDF to a local file (`output.pdf` by default).
+- Allows specifying a custom output filename.
+- Returns a confirmation message with the filename.
 
 ##### Usage
 
 ###### Parameters
 
 - `content` (required): The markdown content to convert to PDF.
+- `filename` (optional): The desired filename for the output PDF. If omitted, defaults to `output.pdf`.
 
 ###### Example Response
 
-The tool returns a text result containing the Base64 encoded binary data of the generated PDF.
+The tool returns a text result confirming the file save operation.
 
 ```text
-JVBERi0xLjQKJeLjz9MKMSAwIG9iago8PC9UeXBlL0NhdGFsb2cvUGFnZXMgMyAwIFI+P... (truncated Base64 string)
+PDF successfully saved to output.pdf
+```
+
+Or, if a filename was provided:
+
+```text
+PDF successfully saved to my_document.pdf
 ```
 
 ### Email Prompt
