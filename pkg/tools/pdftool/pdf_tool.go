@@ -1,13 +1,13 @@
 package pdftool
 
 import (
-	"bytes"
 	"context"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"image/color"
 	"log"
+	"net/http"
+	"os"
 
 	// Add this line
 	"github.com/mark3labs/mcp-go/mcp"
@@ -26,20 +26,29 @@ type PdfTool struct {
 // NewPdfTool creates a new PdfTool instance.
 func NewPdfTool(logger *log.Logger) (*PdfTool, error) {
 	// Create the tool with proper schema
+	// Create the tool with proper schema
 	tool := mcp.NewTool(
 		"markdown_to_pdf",
 		mcp.WithDescription(
-			"Converts markdown content to a PDF document.",
+			"Converts markdown content to a PDF document and saves it to a file.", // Updated description
 		),
 		mcp.WithString(
 			"content",
 			mcp.Description("The markdown content to convert to PDF"),
 			mcp.Required(),
 		),
+		// Add optional filename parameter
+		mcp.WithString( // Add this block
+			"filename",
+			mcp.Description(
+				"Optional filename for the output PDF. Defaults to 'output.pdf'.",
+			),
+			// Not required
+		),
 	)
 	return &PdfTool{
 		Name:        "markdown_to_pdf",
-		Description: "Converts markdown content to a PDF document.",
+		Description: "Converts markdown content to a PDF document and saves it to a file.", // Updated description
 		Tool:        tool,
 		Logger:      logger,
 	}, nil
@@ -74,34 +83,53 @@ func (pt *PdfTool) Handler(
 	if !ok {
 		return nil, errors.New("missing required parameter: content")
 	}
+	// --- Determine output filename ---
+	outputFilename := "output.pdf" // Default filename
+	if fname, ok := request.Params.Arguments["filename"].(string); ok &&
+		fname != "" {
+		outputFilename = fname
+	}
+	pdfFile, err := os.Create(outputFilename)
+	if err != nil {
+		return nil, fmt.Errorf(
+			"error creating file %s %w", outputFilename, err,
+		)
+	}
+	defer pdfFile.Close()
+
 	markdown := goldmark.New(
-		// Use the PDF renderer instead of the HTML one
-		goldmark.WithRenderer(
-			pdf.New(
-				pdf.WithContext(context.Background()),
-				pdf.WithLinkColor(color.RGBA{204, 69, 120, 255}),
-				pdf.WithHeadingFont(
-					pdf.GetTextFont("IBM Plex Serif", pdf.FontLora),
-				),
-				pdf.WithBodyFont(pdf.GetTextFont("Open Sans", pdf.FontRoboto)),
-				pdf.WithCodeFont(
-					pdf.GetCodeFont("Inconsolata", pdf.FontRobotoMono),
+		goldmark.WithRenderer(pdf.New(
+			pdf.WithContext(
+				context.Background(),
+			),
+			pdf.WithLinkColor(
+				color.RGBA{R: 204, G: 69, B: 120, A: 255},
+			),
+			pdf.WithImageFS(
+				http.FS(os.DirFS(".")),
+			), // Consider security implications of reading local files
+			pdf.WithHeadingFont(
+				pdf.GetTextFont(
+					"IBM Plex Serif", pdf.FontLora,
 				),
 			),
-		),
+			pdf.WithBodyFont(
+				pdf.GetTextFont("Open Sans", pdf.FontRoboto)),
+			pdf.WithCodeFont(
+				pdf.GetCodeFont("Inconsolata", pdf.FontRobotoMono),
+			),
+		)),
 	)
-
-	var pdfBuffer bytes.Buffer
-	err := markdown.Convert([]byte(contentVal), &pdfBuffer)
+	err = markdown.Convert([]byte(contentVal), pdfFile)
 	if err != nil {
 		pt.Logger.Printf("Error converting markdown to PDF: %v", err)
 		return nil, fmt.Errorf("failed to convert markdown to PDF: %w", err)
 	}
-	pt.Logger.Printf(
-		"Successfully converted markdown to PDF (%d bytes)",
-		pdfBuffer.Len(),
+	pt.Logger.Println(
+		"Successfully converted markdown to PDF",
 	)
+	pt.Logger.Printf("Saved PDF to file: %s", outputFilename)
 	return mcp.NewToolResultText(
-		base64.StdEncoding.EncodeToString(pdfBuffer.Bytes()),
+		fmt.Sprintf("PDF successfully saved to %s", outputFilename),
 	), nil
 }
