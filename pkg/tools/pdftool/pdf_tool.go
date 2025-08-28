@@ -9,7 +9,7 @@ import (
 	"net/http"
 	"os"
 
-	// Add this line
+	// Add this line.
 	"github.com/mark3labs/mcp-go/mcp"
 	pdf "github.com/stephenafamo/goldmark-pdf" // pdf renderer
 	"github.com/yuin/goldmark"
@@ -54,27 +54,27 @@ func NewPdfTool(logger *log.Logger) (*PdfTool, error) {
 	}, nil
 }
 
-// GetName returns the name of the tool
+// GetName returns the name of the tool.
 func (pt *PdfTool) GetName() string {
 	return pt.Name
 }
 
-// GetDescription returns the description of the tool
+// GetDescription returns the description of the tool.
 func (pt *PdfTool) GetDescription() string {
 	return pt.Description
 }
 
-// GetSchema returns the JSON schema for the tool's parameters
+// GetSchema returns the JSON schema for the tool's parameters.
 func (pt *PdfTool) GetSchema() mcp.ToolInputSchema {
 	return pt.Tool.InputSchema
 }
 
-// GetTool returns the MCP Tool
+// GetTool returns the MCP Tool.
 func (pt *PdfTool) GetTool() mcp.Tool {
 	return pt.Tool
 }
 
-// Handler returns a function that handles tool execution requests
+// Handler returns a function that handles tool execution requests.
 func (pt *PdfTool) Handler(
 	ctx context.Context,
 	request mcp.CallToolRequest,
