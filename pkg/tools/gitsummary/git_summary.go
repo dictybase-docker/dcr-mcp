@@ -11,7 +11,7 @@ import (
 	"github.com/mark3labs/mcp-go/mcp"
 )
 
-// Initialize validator
+// Initialize validator.
 var validate = validator.New()
 
 // GitSummaryTool is a tool that summarizes git commit messages.
@@ -88,33 +88,33 @@ func NewGitSummaryTool(logger *log.Logger) (*GitSummaryTool, error) {
 	}, nil
 }
 
-// GetName returns the name of the tool
+// GetName returns the name of the tool.
 func (g *GitSummaryTool) GetName() string {
 	return g.Name
 }
 
-// GetDescription returns the description of the tool
+// GetDescription returns the description of the tool.
 func (g *GitSummaryTool) GetDescription() string {
 	return g.Description
 }
 
-// GetSchema returns the JSON schema for the tool's parameters
+// GetSchema returns the JSON schema for the tool's parameters.
 func (g *GitSummaryTool) GetSchema() mcp.ToolInputSchema {
 	return g.Tool.InputSchema
 }
 
-// GetTool returns the MCP Tool
+// GetTool returns the MCP Tool.
 func (g *GitSummaryTool) GetTool() mcp.Tool {
 	return g.Tool
 }
 
-// Handler returns a function that handles tool execution requests
+// Handler returns a function that handles tool execution requests.
 func (g *GitSummaryTool) Handler(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
 	args := request.GetArguments()
-	
+
 	// Create request with required parameters
 	params := GitSummaryRequest{
 		RepoURL:   args["repo_url"].(string),
@@ -123,22 +123,22 @@ func (g *GitSummaryTool) Handler(
 		Author:    args["author"].(string),
 		APIKey:    os.Getenv("OPENAI_API_KEY"),
 	}
-	
+
 	// Only add end_date if it was provided in the arguments
 	if endDate, ok := args["end_date"].(string); ok && endDate != "" {
 		params.EndDate = endDate
 	}
 	if err := validate.Struct(params); err != nil {
-		return nil, fmt.Errorf("Validation error: %v", err)
+		return nil, fmt.Errorf("validation error: %v", err)
 	}
 
 	client, err := worksummary.NewOpenAIClient(params.APIKey)
 	if err != nil {
-		return nil, fmt.Errorf("Error initializing OpenAI client: %v", err)
+		return nil, fmt.Errorf("error initializing OpenAI client: %v", err)
 	}
 	summary, err := g.GenerateSummary(ctx, client, params)
 	if err != nil {
-		return nil, fmt.Errorf("Error generating summary: %v", err)
+		return nil, fmt.Errorf("error generating summary: %v", err)
 	}
 
 	return mcp.NewToolResultText(summary), nil
