@@ -7,13 +7,15 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func TestParser(t *testing.T) {
-	tests := []struct {
-		name     string
-		markdown string
-		want     string
-		options  []ParserOption
-	}{
+type parserTestCase struct {
+	name     string
+	markdown string
+	want     string
+	options  []ParserOption
+}
+
+func getParserTestCases() []parserTestCase {
+	return []parserTestCase{
 		{
 			name:     "basic formatting",
 			markdown: "**Bold** and *italic*",
@@ -57,46 +59,54 @@ func TestParser(t *testing.T) {
 			options:  nil,
 		},
 	}
+}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			r := require.New(t)
-			
-			p := NewParser(tt.options...)
-			got, err := p.ParseString(tt.markdown)
-			
-			r.NoError(err, "Parser.ParseString() should not return an error")
-			r.Contains(got, tt.want, "Output should contain expected HTML")
+func TestParser(t *testing.T) {
+	t.Parallel()
+	testCases := getParserTestCases()
+
+	for _, testCase := range testCases {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+			requireHelper := require.New(t)
+
+			markdownParser := NewParser(testCase.options...)
+			gotResult, err := markdownParser.ParseString(testCase.markdown)
+
+			requireHelper.NoError(err, "Parser.ParseString() should not return an error")
+			requireHelper.Contains(gotResult, testCase.want, "Output should contain expected HTML")
 		})
 	}
 }
 
 func TestParserReader(t *testing.T) {
-	r := require.New(t)
+	t.Parallel()
+	requireHelper := require.New(t)
 	markdown := "# Heading"
 	reader := bytes.NewReader([]byte(markdown))
-	
-	p := NewParser()
-	got, err := p.ParseReader(reader)
-	
-	r.NoError(err, "Parser.ParseReader() should not return an error")
-	r.Contains(string(got), "<h1", "Output should contain h1 heading")
+
+	markdownParser := NewParser()
+	got, err := markdownParser.ParseReader(reader)
+
+	requireHelper.NoError(err, "Parser.ParseReader() should not return an error")
+	requireHelper.Contains(string(got), "<h1", "Output should contain h1 heading")
 }
 
 func TestMetadata(t *testing.T) {
-	r := require.New(t)
+	t.Parallel()
+	requireHelper := require.New(t)
 	markdown := `---
 title: Test Document
 author: John Doe
 ---
 # Content`
 
-	p := NewParser()
-	_, err := p.ParseString(markdown)
-	
-	r.NoError(err, "Parser.ParseString() should not return an error")
-	
-	meta := p.GetMetadata()
-	r.Equal("Test Document", meta["title"], "Metadata should contain correct title")
-	r.Equal("John Doe", meta["author"], "Metadata should contain correct author")
+	markdownParser := NewParser()
+	_, err := markdownParser.ParseString(markdown)
+
+	requireHelper.NoError(err, "Parser.ParseString() should not return an error")
+
+	meta := markdownParser.GetMetadata()
+	requireHelper.Equal("Test Document", meta["title"], "Metadata should contain correct title")
+	requireHelper.Equal("John Doe", meta["author"], "Metadata should contain correct author")
 }
