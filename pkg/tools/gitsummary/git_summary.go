@@ -113,7 +113,7 @@ func (g *GitSummaryTool) Handler(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
-	args := request.Params.Arguments
+	args := request.GetArguments()
 	
 	// Create request with required parameters
 	params := GitSummaryRequest{

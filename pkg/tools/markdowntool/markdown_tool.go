@@ -65,7 +65,8 @@ func (m *MarkdownTool) Handler(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
-	contentVal, ok := request.Params.Arguments["content"].(string)
+	args := request.GetArguments()
+	contentVal, ok := args["content"].(string)
 	if !ok {
 		return nil, errors.New("missing required parameter: content")
 	}
