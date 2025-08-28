@@ -79,13 +79,14 @@ func (pt *PdfTool) Handler(
 	ctx context.Context,
 	request mcp.CallToolRequest,
 ) (*mcp.CallToolResult, error) {
-	contentVal, ok := request.Params.Arguments["content"].(string)
+	args := request.GetArguments()
+	contentVal, ok := args["content"].(string)
 	if !ok {
 		return nil, errors.New("missing required parameter: content")
 	}
 	// --- Determine output filename ---
 	outputFilename := "output.pdf" // Default filename
-	if fname, ok := request.Params.Arguments["filename"].(string); ok &&
+	if fname, ok := args["filename"].(string); ok &&
 		fname != "" {
 		outputFilename = fname
 	}
