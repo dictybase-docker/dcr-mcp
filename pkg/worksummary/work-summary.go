@@ -17,7 +17,7 @@ import (
 	"github.com/markusmobius/go-dateparser/date"
 )
 
-// Global validator instance
+// Global validator instance.
 var validate = validator.New()
 
 // GitAnalyzer handles git repository analysis operations including cloning
@@ -62,7 +62,7 @@ func WithTimeZone(tz *time.Location) GitAnalyzerOption {
 
 // NewGitAnalyzer creates a new GitAnalyzer with the provided options.
 func NewGitAnalyzer(opts ...GitAnalyzerOption) *GitAnalyzer {
-	ga := &GitAnalyzer{
+	gitAnalyzer := &GitAnalyzer{
 		logger: log.New(
 			os.Stderr,
 			"[git-commit-summary] ",
@@ -76,10 +76,10 @@ func NewGitAnalyzer(opts ...GitAnalyzerOption) *GitAnalyzer {
 
 	// Apply all options
 	for _, opt := range opts {
-		opt(ga)
+		opt(gitAnalyzer)
 	}
 
-	return ga
+	return gitAnalyzer
 }
 
 func (ga *GitAnalyzer) parseStartDate(dateStr string) (date.Date, error) {
