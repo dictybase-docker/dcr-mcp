@@ -31,3 +31,4 @@ go.work
 .aider*
 .mcp.json
 .claude
+.tool-versions
