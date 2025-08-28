@@ -9,6 +9,7 @@ import (
 
 // TestNewGitSummaryTool tests the creation of a new GitSummaryTool.
 func TestNewGitSummaryTool(t *testing.T) {
+	t.Parallel()
 	logger := log.New(os.Stderr, "", 0)
 	tool, err := NewGitSummaryTool(logger)
 	if err != nil {
@@ -48,6 +49,7 @@ func (m *MockOpenAIClient) SummarizeCommitMessages(
 
 // TestGenerateSummary tests the GenerateSummary method with a mock client.
 func TestGenerateSummary(t *testing.T) {
+	t.Parallel()
 	// Skip this test in automated CI environments since it requires access to external git repositories
 	t.Skip("Skipping test that requires external git access")
 
