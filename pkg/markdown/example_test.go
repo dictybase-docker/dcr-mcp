@@ -8,12 +8,8 @@ import (
 	"github.com/dictybase/dcr-mcp/pkg/markdown"
 )
 
-func Example() {
-	// Create a new parser with default settings
-	parser := markdown.NewParser()
-
-	// Sample markdown content with metadata, GFM features, and code blocks
-	markdownContent := `---
+func getSampleMarkdownContent() string {
+	return `---
 title: Example Document
 author: John Doe
 date: 2025-03-25
@@ -51,32 +47,47 @@ func main() {
 
 Visit [Goldmark](https://github.com/yuin/goldmark) for more info.
 `
+}
 
-	// Parse the markdown content
-	htmlOutput, err := parser.ParseString(markdownContent)
-	if err != nil {
-		fmt.Fprintf(os.Stderr, "Error parsing markdown: %v\n", err)
-		return
-	}
-
+func printSampleOutput(htmlOutput string) {
 	// Print first few lines as an example
 	lines := strings.Split(htmlOutput, "\n")
 	for i := 0; i < 5 && i < len(lines); i++ {
 		fmt.Println(lines[i])
 	}
 	fmt.Println("...")
+}
 
+func printMetadata(markdownParser *markdown.Parser) {
 	// Get metadata from the document
-	metadata := parser.GetMetadata()
+	metadata := markdownParser.GetMetadata()
 	fmt.Printf("\nMetadata:\n")
-	for k, v := range metadata {
-		fmt.Printf("  %s: %v\n", k, v)
+	for key, value := range metadata {
+		fmt.Printf("  %s: %v\n", key, value)
 	}
+}
 
+func demonstrateXHTMLOutput() {
 	// Example with XHTML output
 	xhtmlParser := markdown.NewParser(markdown.WithXHTML(), markdown.WithLineNumbers())
 	xhtmlOutput, _ := xhtmlParser.ParseString(`<br>`)
-	
+
 	// Print XHTML output to show self-closing tags
 	fmt.Printf("\nXHTML output (shows self-closing tags):\n%s\n", xhtmlOutput)
+}
+
+func Example() {
+	// Create a new parser with default settings
+	markdownParser := markdown.NewParser()
+
+	// Parse the markdown content
+	htmlOutput, err := markdownParser.ParseString(getSampleMarkdownContent())
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error parsing markdown: %v\n", err)
+		return
+	}
+
+	printSampleOutput(htmlOutput)
+	printMetadata(markdownParser)
+	demonstrateXHTMLOutput()
 }
