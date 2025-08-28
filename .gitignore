@@ -30,3 +30,4 @@ go.work
 # MCP specific
 .aider*
 .mcp.json
+.claude
