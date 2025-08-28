@@ -75,7 +75,7 @@ func NewOpenAIClient(
 		return nil, errors.New("API key is required")
 	}
 	llm := &OpenAIClient{
-		model:  "google/gemini-2.0-flash-001",
+		model:  "google/gemini-2.5-flash-lite",
 		config: openai.DefaultConfig(apiKey),
 	}
 	llm.config.BaseURL = "https://openrouter.ai/api/v1"
