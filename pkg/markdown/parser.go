@@ -13,16 +13,16 @@ import (
 	html_renderer "github.com/yuin/goldmark/renderer/html"
 )
 
-// Parser is a Markdown parser with GFM, syntax highlighting, typographer extensions and XHTML rendering
+// Parser is a Markdown parser with GFM, syntax highlighting, typographer extensions and XHTML rendering.
 type Parser struct {
 	converter goldmark.Markdown
 	context   parser.Context
 }
 
-// ParserOption defines a functional option for configuring the Markdown Parser
+// ParserOption defines a functional option for configuring the Markdown Parser.
 type ParserOption func(*Parser)
 
-// WithLineNumbers enables line numbers in code blocks
+// WithLineNumbers enables line numbers in code blocks.
 func WithLineNumbers() ParserOption {
 	return func(p *Parser) {
 		// The converter is already initialized with defaults
@@ -30,7 +30,7 @@ func WithLineNumbers() ParserOption {
 	}
 }
 
-// WithXHTML configures the renderer to output XHTML
+// WithXHTML configures the renderer to output XHTML.
 func WithXHTML() ParserOption {
 	return func(p *Parser) {
 		p.converter = goldmark.New(
@@ -79,10 +79,10 @@ func WithUnsafeHTML() ParserOption {
 	}
 }
 
-// NewParser creates a new Markdown parser with the provided options
+// NewParser creates a new Markdown parser with the provided options.
 func NewParser(opts ...ParserOption) *Parser {
 	// Create default parser with sensible defaults
-	p := &Parser{
+	markdownParser := &Parser{
 		converter: goldmark.New(
 			goldmark.WithExtensions(
 				extension.GFM,
@@ -106,13 +106,13 @@ func NewParser(opts ...ParserOption) *Parser {
 
 	// Apply all options
 	for _, opt := range opts {
-		opt(p)
+		opt(markdownParser)
 	}
 
-	return p
+	return markdownParser
 }
 
-// Parse converts markdown source to HTML
+// Parse converts markdown source to HTML.
 func (p *Parser) Parse(src []byte) ([]byte, error) {
 	var buf bytes.Buffer
 	if err := p.converter.Convert(src, &buf, parser.WithContext(p.context)); err != nil {
@@ -121,7 +121,7 @@ func (p *Parser) Parse(src []byte) ([]byte, error) {
 	return buf.Bytes(), nil
 }
 
-// ParseString converts a markdown string to HTML
+// ParseString converts a markdown string to HTML.
 func (p *Parser) ParseString(src string) (string, error) {
 	html, err := p.Parse([]byte(src))
 	if err != nil {
@@ -130,7 +130,7 @@ func (p *Parser) ParseString(src string) (string, error) {
 	return string(html), nil
 }
 
-// ParseReader converts markdown from a reader to HTML
+// ParseReader converts markdown from a reader to HTML.
 func (p *Parser) ParseReader(reader io.Reader) ([]byte, error) {
 	src, err := io.ReadAll(reader)
 	if err != nil {
@@ -139,7 +139,7 @@ func (p *Parser) ParseReader(reader io.Reader) ([]byte, error) {
 	return p.Parse(src)
 }
 
-// GetMetadata returns the metadata extracted from the markdown document
+// GetMetadata returns the metadata extracted from the markdown document.
 func (p *Parser) GetMetadata() map[string]interface{} {
 	return meta.Get(p.context)
 }
