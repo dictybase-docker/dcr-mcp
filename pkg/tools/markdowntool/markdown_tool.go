@@ -40,27 +40,27 @@ func NewMarkdownTool(logger *log.Logger) (*MarkdownTool, error) {
 	}, nil
 }
 
-// GetName returns the name of the tool
+// GetName returns the name of the tool.
 func (m *MarkdownTool) GetName() string {
 	return m.Name
 }
 
-// GetDescription returns the description of the tool
+// GetDescription returns the description of the tool.
 func (m *MarkdownTool) GetDescription() string {
 	return m.Description
 }
 
-// GetSchema returns the JSON schema for the tool's parameters
+// GetSchema returns the JSON schema for the tool's parameters.
 func (m *MarkdownTool) GetSchema() mcp.ToolInputSchema {
 	return m.Tool.InputSchema
 }
 
-// GetTool returns the MCP Tool
+// GetTool returns the MCP Tool.
 func (m *MarkdownTool) GetTool() mcp.Tool {
 	return m.Tool
 }
 
-// Handler returns a function that handles tool execution requests
+// Handler returns a function that handles tool execution requests.
 func (m *MarkdownTool) Handler(
 	ctx context.Context,
 	request mcp.CallToolRequest,
