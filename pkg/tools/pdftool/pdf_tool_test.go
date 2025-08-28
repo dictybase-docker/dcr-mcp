@@ -25,7 +25,7 @@ func TestNewPdfTool(t *testing.T) {
 		"Tool name should be 'markdown_to_pdf'",
 	)
 	r.Equal(
-		"Converts markdown content to a PDF document.",
+		"Converts markdown content to a PDF document and saves it to a file.",
 		tool.GetDescription(),
 		"Tool description mismatch",
 	)
@@ -49,13 +49,15 @@ func TestNewPdfTool(t *testing.T) {
 		ok,
 		"Schema should have 'filename' property",
 	) // Add this line
+	filenamePropMap, ok := filenameProp.(map[string]any)
+	r.True(ok, "filename property should be a map")
 	r.Equal(
 		"string",
-		filenameProp.Type,
+		filenamePropMap["type"],
 	) // Add this line
 	r.Equal(
 		"Optional filename for the output PDF. Defaults to 'output.pdf'.",
-		filenameProp.Description,
+		filenamePropMap["description"],
 	) // Add this line
 
 	r.Contains(schema.Required, "content")
@@ -101,14 +103,15 @@ func TestHandler(t *testing.T) {
 		)
 
 		// Check the success message
-		textContent := result.Content[0].Text
+		textContent, ok := mcp.AsTextContent(result.Content[0])
+		r.True(ok, "First content should be text content")
 		expectedMsg := fmt.Sprintf(
 			"PDF successfully saved to %s",
 			defaultFilename,
 		)
 		r.Equal(
 			expectedMsg,
-			textContent,
+			textContent.Text,
 			"Success message mismatch (default filename)",
 		)
 
@@ -161,14 +164,15 @@ func TestHandler(t *testing.T) {
 		)
 
 		// Check the success message
-		textContent := result.Content[0].Text
+		textContent, ok := mcp.AsTextContent(result.Content[0])
+		r.True(ok, "First content should be text content")
 		expectedMsg := fmt.Sprintf(
 			"PDF successfully saved to %s",
 			customFilename,
 		)
 		r.Equal(
 			expectedMsg,
-			textContent,
+			textContent.Text,
 			"Success message mismatch (custom filename)",
 		)
 
