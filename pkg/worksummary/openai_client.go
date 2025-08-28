@@ -43,10 +43,10 @@ type OpenAIClient struct {
 	config openai.ClientConfig
 }
 
-// OpenAIClientOption defines a functional option for configuring OpenAIClient
+// OpenAIClientOption defines a functional option for configuring OpenAIClient.
 type OpenAIClientOption func(*OpenAIClient)
 
-// WithBaseURL sets a custom base URL for the OpenAI client
+// WithBaseURL sets a custom base URL for the OpenAI client.
 func WithBaseURL(baseURL string) OpenAIClientOption {
 	return func(c *OpenAIClient) {
 		if baseURL != "" {
@@ -55,7 +55,7 @@ func WithBaseURL(baseURL string) OpenAIClientOption {
 	}
 }
 
-// WithModel sets a custom model for the OpenAI client
+// WithModel sets a custom model for the OpenAI client.
 func WithModel(model string) OpenAIClientOption {
 	return func(c *OpenAIClient) {
 		if model != "" {
@@ -112,7 +112,7 @@ func (c *OpenAIClient) SummarizeCommitMessages(
 		},
 	}
 
-	var sb strings.Builder
+	var stringBuilder strings.Builder
 	stream, err := c.client.CreateChatCompletionStream(ctx, req)
 	if err != nil {
 		return "", fmt.Errorf("OpenAI stream error: %w", err)
@@ -122,19 +122,19 @@ func (c *OpenAIClient) SummarizeCommitMessages(
 	for {
 		select {
 		case <-ctx.Done():
-			return sb.String(), ctx.Err()
+			return stringBuilder.String(), ctx.Err()
 		default:
 			resp, err := stream.Recv()
 			if errors.Is(err, io.EOF) {
-				return sb.String(), nil
+				return stringBuilder.String(), nil
 			}
 			if err != nil {
-				return sb.String(), fmt.Errorf(
+				return stringBuilder.String(), fmt.Errorf(
 					"OpenAI stream recv error: %w",
 					err,
 				)
 			}
-			sb.WriteString(resp.Choices[0].Delta.Content)
+			stringBuilder.WriteString(resp.Choices[0].Delta.Content)
 		}
 	}
 }
