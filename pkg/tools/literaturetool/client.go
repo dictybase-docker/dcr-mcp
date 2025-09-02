@@ -10,6 +10,11 @@ import (
 	"github.com/dictybase/literature"
 )
 
+const (
+	IDTypePMID = "pmid"
+	IDTypeDOI  = "doi"
+)
+
 // LiteratureClient wraps the dictyBase literature clients.
 type LiteratureClient struct {
 	pubmedClient    *literature.Client
@@ -75,16 +80,16 @@ func NewLiteratureClient(opts ...Option) (*LiteratureClient, error) {
 }
 
 // GetArticleFromPubMed fetches article information from PubMed.
-func (c *LiteratureClient) GetArticleFromPubMed(ctx context.Context, id, idType string) (*Article, error) {
+func (c *LiteratureClient) GetArticleFromPubMed(ctx context.Context, identifier, idType string) (*Article, error) {
 	var article interface{}
 	var err error
 
 	switch idType {
-	case "pmid":
-		article, err = c.pubmedClient.GetArticle(id)
-	case "doi":
+	case IDTypePMID:
+		article, err = c.pubmedClient.GetArticle(identifier)
+	case IDTypeDOI:
 		// PubMed doesn't directly support DOI lookup, so we'll use EuropePMC as fallback
-		return c.GetArticleFromEuropePMC(ctx, id, idType)
+		return c.GetArticleFromEuropePMC(ctx, identifier, idType)
 	default:
 		return nil, fmt.Errorf("unsupported ID type for PubMed: %s", idType)
 	}
@@ -94,7 +99,7 @@ func (c *LiteratureClient) GetArticleFromPubMed(ctx context.Context, id, idType 
 		if isNotFoundError(err) {
 			return nil, &LiteratureError{
 				Type:    ErrorTypeArticleNotFound,
-				Message: fmt.Sprintf("article not found in PubMed for %s: %s", idType, id),
+				Message: fmt.Sprintf("article not found in PubMed for %s: %s", idType, identifier),
 				Code:    "PUBMED_NOT_FOUND",
 			}
 		}
@@ -109,17 +114,17 @@ func (c *LiteratureClient) GetArticleFromPubMed(ctx context.Context, id, idType 
 }
 
 // GetArticleFromEuropePMC fetches article information from EuropePMC.
-func (c *LiteratureClient) GetArticleFromEuropePMC(ctx context.Context, id, idType string) (*Article, error) {
+func (c *LiteratureClient) GetArticleFromEuropePMC(ctx context.Context, identifier, idType string) (*Article, error) {
 	var article interface{}
 	var err error
 
 	switch idType {
-	case "pmid":
-		article, err = c.europePMCClient.GetArticle(id)
-	case "doi":
+	case IDTypePMID:
+		article, err = c.europePMCClient.GetArticle(identifier)
+	case IDTypeDOI:
 		// For DOI, we need to search first to get the article
 		searchResult, searchErr := c.europePMCClient.Search(
-			fmt.Sprintf("DOI:%s", id),
+			fmt.Sprintf("DOI:%s", identifier),
 			literature.WithEuropePMCLimit(1),
 		)
 		if searchErr != nil {
@@ -129,7 +134,7 @@ func (c *LiteratureClient) GetArticleFromEuropePMC(ctx context.Context, id, idTy
 		if len(searchResult.Articles) == 0 {
 			return nil, &LiteratureError{
 				Type:    ErrorTypeArticleNotFound,
-				Message: fmt.Sprintf("no article found for DOI: %s", id),
+				Message: fmt.Sprintf("no article found for DOI: %s", identifier),
 				Code:    "DOI_NOT_FOUND",
 			}
 		}
@@ -144,7 +149,7 @@ func (c *LiteratureClient) GetArticleFromEuropePMC(ctx context.Context, id, idTy
 		if isNotFoundError(err) {
 			return nil, &LiteratureError{
 				Type:    ErrorTypeArticleNotFound,
-				Message: fmt.Sprintf("article not found in EuropePMC for %s: %s", idType, id),
+				Message: fmt.Sprintf("article not found in EuropePMC for %s: %s", idType, identifier),
 				Code:    "EUROPEPMC_NOT_FOUND",
 			}
 		}
@@ -183,22 +188,22 @@ func isNotFoundError(err error) bool {
 }
 
 // GetArticleWithFallback implements the recommended logic: EuropePMC first, then PubMed fallback.
-func (c *LiteratureClient) GetArticleWithFallback(ctx context.Context, id, idType string) (*Article, error) {
+func (c *LiteratureClient) GetArticleWithFallback(ctx context.Context, identifier, idType string) (*Article, error) {
 	// Try EuropePMC first
-	article, err := c.GetArticleFromEuropePMC(ctx, id, idType)
+	article, err := c.GetArticleFromEuropePMC(ctx, identifier, idType)
 	if err == nil {
 		return article, nil
 	}
 
-	c.logger.Printf("EuropePMC failed for %s %s: %v, trying PubMed fallback", idType, id, err)
+	c.logger.Printf("EuropePMC failed for %s %s: %v, trying PubMed fallback", idType, identifier, err)
 
 	// Only try PubMed fallback for PMIDs (since PubMed doesn't handle DOIs directly)
-	if idType == "pmid" {
-		fallbackArticle, fallbackErr := c.GetArticleFromPubMed(ctx, id, idType)
+	if idType == IDTypePMID {
+		fallbackArticle, fallbackErr := c.GetArticleFromPubMed(ctx, identifier, idType)
 		if fallbackErr == nil {
 			return fallbackArticle, nil
 		}
-		c.logger.Printf("PubMed fallback also failed for PMID %s: %v", id, fallbackErr)
+		c.logger.Printf("PubMed fallback also failed for PMID %s: %v", identifier, fallbackErr)
 	}
 
 	// Return the original EuropePMC error
@@ -267,68 +272,16 @@ func (c *LiteratureClient) convertPubMedArticle(article interface{}) (*Article, 
 
 // convertEuropePMCArticle converts a EuropePMC article to our standard format.
 func (c *LiteratureClient) convertEuropePMCArticle(article interface{}) (*Article, error) {
-	// Type assertion for EuropePMC article
 	europePMCArticle, ok := article.(*literature.EuropePMCArticle)
 	if !ok {
 		return nil, fmt.Errorf("invalid EuropePMC article type")
 	}
 
-	// Convert authors
-	authors := make([]Author, len(europePMCArticle.Authors))
-	for i, author := range europePMCArticle.Authors {
-		affiliations := make([]Affiliation, len(author.Affiliations))
-		for j, affil := range author.Affiliations {
-			affiliations[j] = Affiliation{
-				Affiliation: affil.Affiliation,
-			}
-		}
-
-		authors[i] = Author{
-			FullName:     author.FullName,
-			FirstName:    author.FirstName,
-			LastName:     author.LastName,
-			Initials:     author.Initials,
-			ORCID:        author.ORCID,
-			Affiliations: affiliations,
-		}
-	}
-
-	// Convert MeSH headings
-	meshHeadings := make([]MeshHeading, len(europePMCArticle.MeshHeadings))
-	for i, mesh := range europePMCArticle.MeshHeadings {
-		qualifiers := make([]MeshQualifier, len(mesh.MeshQualifiers))
-		for j, qual := range mesh.MeshQualifiers {
-			qualifiers[j] = MeshQualifier{
-				QualifierName: qual.QualifierName,
-				MajorTopic:    qual.MajorTopic,
-			}
-		}
-
-		meshHeadings[i] = MeshHeading{
-			MajorTopic:     mesh.MajorTopic,
-			DescriptorName: mesh.DescriptorName,
-			MeshQualifiers: qualifiers,
-		}
-	}
-
-	// Convert chemicals
-	chemicals := make([]Chemical, len(europePMCArticle.Chemicals))
-	for i, chem := range europePMCArticle.Chemicals {
-		chemicals[i] = Chemical{
-			Name:        chem.Name,
-			RegistryNum: chem.RegistryNumber,
-		}
-	}
-
-	// Convert grants
-	grants := make([]Grant, len(europePMCArticle.Grants))
-	for i, grant := range europePMCArticle.Grants {
-		grants[i] = Grant{
-			GrantID: grant.GrantID,
-			Agency:  grant.Agency,
-			OrderIn: grant.OrderIn,
-		}
-	}
+	authors := c.convertAuthors(europePMCArticle.Authors)
+	meshHeadings := c.convertMeshHeadings(europePMCArticle.MeshHeadings)
+	chemicals := c.convertChemicals(europePMCArticle.Chemicals)
+	grants := c.convertGrants(europePMCArticle.Grants)
+	journal := c.convertJournal(europePMCArticle.Journal)
 
 	return &Article{
 		ID:           europePMCArticle.ID,
@@ -340,20 +293,7 @@ func (c *LiteratureClient) convertEuropePMCArticle(article interface{}) (*Articl
 		AuthorString: europePMCArticle.AuthorString,
 		Authors:      authors,
 		Abstract:     europePMCArticle.Abstract,
-		Journal: Journal{
-			Title:               europePMCArticle.Journal.Title,
-			MedlineAbbreviation: europePMCArticle.Journal.MedlineAbbreviation,
-			ISOAbbreviation:     europePMCArticle.Journal.ISOAbbreviation,
-			ISSN:                europePMCArticle.Journal.ISSN,
-			ESSN:                europePMCArticle.Journal.ESSN,
-			Volume:              europePMCArticle.Journal.Volume,
-			Issue:               europePMCArticle.Journal.Issue,
-			IssueID:             europePMCArticle.Journal.IssueID,
-			DateOfPublication:   europePMCArticle.Journal.DateOfPublication,
-			MonthOfPublication:  europePMCArticle.Journal.MonthOfPublication,
-			YearOfPublication:   europePMCArticle.Journal.YearOfPublication,
-			NLMID:               europePMCArticle.Journal.NLMID,
-		},
+		Journal:      journal,
 		PubYear:      europePMCArticle.PubYear,
 		PageInfo:     europePMCArticle.PageInfo,
 		Keywords:     europePMCArticle.Keywords,
@@ -370,4 +310,91 @@ func (c *LiteratureClient) convertEuropePMCArticle(article interface{}) (*Articl
 		CreationDate: europePMCArticle.CreationDate,
 		RevisionDate: europePMCArticle.RevisionDate,
 	}, nil
+}
+
+// convertAuthors converts EuropePMC authors to standard format.
+func (c *LiteratureClient) convertAuthors(europePMCAuthors []literature.EuropePMCAuthor) []Author {
+	authors := make([]Author, len(europePMCAuthors))
+	for authorIndex, author := range europePMCAuthors {
+		affiliations := make([]Affiliation, len(author.Affiliations))
+		for affiliationIndex, affil := range author.Affiliations {
+			affiliations[affiliationIndex] = Affiliation{
+				Affiliation: affil.Affiliation,
+			}
+		}
+
+		authors[authorIndex] = Author{
+			FullName:     author.FullName,
+			FirstName:    author.FirstName,
+			LastName:     author.LastName,
+			Initials:     author.Initials,
+			ORCID:        author.ORCID,
+			Affiliations: affiliations,
+		}
+	}
+	return authors
+}
+
+// convertMeshHeadings converts EuropePMC MeSH headings to standard format.
+func (c *LiteratureClient) convertMeshHeadings(europePMCMeshHeadings []literature.EuropePMCMeshHeading) []MeshHeading {
+	meshHeadings := make([]MeshHeading, len(europePMCMeshHeadings))
+	for meshIndex, mesh := range europePMCMeshHeadings {
+		qualifiers := make([]MeshQualifier, len(mesh.MeshQualifiers))
+		for qualifierIndex, qual := range mesh.MeshQualifiers {
+			qualifiers[qualifierIndex] = MeshQualifier{
+				QualifierName: qual.QualifierName,
+				MajorTopic:    qual.MajorTopic,
+			}
+		}
+
+		meshHeadings[meshIndex] = MeshHeading{
+			MajorTopic:     mesh.MajorTopic,
+			DescriptorName: mesh.DescriptorName,
+			MeshQualifiers: qualifiers,
+		}
+	}
+	return meshHeadings
+}
+
+// convertChemicals converts EuropePMC chemicals to standard format.
+func (c *LiteratureClient) convertChemicals(europePMCChemicals []literature.EuropePMCChemical) []Chemical {
+	chemicals := make([]Chemical, len(europePMCChemicals))
+	for chemicalIndex, chem := range europePMCChemicals {
+		chemicals[chemicalIndex] = Chemical{
+			Name:        chem.Name,
+			RegistryNum: chem.RegistryNumber,
+		}
+	}
+	return chemicals
+}
+
+// convertGrants converts EuropePMC grants to standard format.
+func (c *LiteratureClient) convertGrants(europePMCGrants []literature.EuropePMCGrant) []Grant {
+	grants := make([]Grant, len(europePMCGrants))
+	for grantIndex, grant := range europePMCGrants {
+		grants[grantIndex] = Grant{
+			GrantID: grant.GrantID,
+			Agency:  grant.Agency,
+			OrderIn: grant.OrderIn,
+		}
+	}
+	return grants
+}
+
+// convertJournal converts EuropePMC journal to standard format.
+func (c *LiteratureClient) convertJournal(europePMCJournal literature.EuropePMCJournal) Journal {
+	return Journal{
+		Title:               europePMCJournal.Title,
+		MedlineAbbreviation: europePMCJournal.MedlineAbbreviation,
+		ISOAbbreviation:     europePMCJournal.ISOAbbreviation,
+		ISSN:                europePMCJournal.ISSN,
+		ESSN:                europePMCJournal.ESSN,
+		Volume:              europePMCJournal.Volume,
+		Issue:               europePMCJournal.Issue,
+		IssueID:             europePMCJournal.IssueID,
+		DateOfPublication:   europePMCJournal.DateOfPublication,
+		MonthOfPublication:  europePMCJournal.MonthOfPublication,
+		YearOfPublication:   europePMCJournal.YearOfPublication,
+		NLMID:               europePMCJournal.NLMID,
+	}
 }
