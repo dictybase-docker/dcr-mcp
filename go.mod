@@ -1,17 +1,18 @@
 module github.com/dictybase/dcr-mcp
 
-go 1.23.0
+go 1.23.8
 
-toolchain go1.23.6
+toolchain go1.24.5
 
 require (
+	github.com/dictybase/literature v0.0.0-20250902164840-61e93ff2db59
 	github.com/go-git/go-git/v5 v5.14.0
-	github.com/go-playground/validator/v10 v10.25.0
+	github.com/go-playground/validator/v10 v10.27.0
 	github.com/mark3labs/mcp-go v0.38.0
 	github.com/markusmobius/go-dateparser v1.2.3
 	github.com/sashabaranov/go-openai v1.38.1
 	github.com/stephenafamo/goldmark-pdf v0.4.1
-	github.com/stretchr/testify v1.10.0
+	github.com/stretchr/testify v1.11.1
 	github.com/yuin/goldmark v1.7.8
 	github.com/yuin/goldmark-emoji v1.0.5
 	github.com/yuin/goldmark-highlighting v0.0.0-20220208100518-594be1970594
@@ -42,10 +43,13 @@ require (
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/hablullah/go-hijri v1.0.2 // indirect
 	github.com/hablullah/go-juliandays v1.0.0 // indirect
+	github.com/hashicorp/errwrap v1.0.0 // indirect
+	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/invopop/jsonschema v0.13.0 // indirect
 	github.com/jalaali/go-jalaali v0.0.0-20210801064154-80525e88d958 // indirect
 	github.com/jbenet/go-context v0.0.0-20150711004518-d14ea06fba99 // indirect
 	github.com/jellydator/ttlcache/v3 v3.1.0 // indirect
+	github.com/jlaffaye/ftp v0.2.0 // indirect
 	github.com/kevinburke/ssh_config v1.2.0 // indirect
 	github.com/leodido/go-urn v1.4.0 // indirect
 	github.com/magefile/mage v1.14.0 // indirect
