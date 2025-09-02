@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"log"
+	"regexp"
 	"strings"
 
 	"github.com/go-playground/validator/v10"
@@ -13,6 +14,16 @@ import (
 
 // Initialize validator.
 var validate = validator.New()
+
+// DOI regex pattern to match and extract DOI from various formats.
+// Handles optional prefixes: doi:, DOI:, https://doi.org/, http://doi.org/
+// Captures the actual DOI part (10.xxxx/yyyy) with whitespace trimming.
+var doiRegex = regexp.MustCompile(
+	`(?i)^(?:(?:https?://)?doi\.org/|doi:)?\s*(10\.\S+/\S+)\s*$`,
+)
+
+// PMID regex pattern to validate and extract PMID (positive integers only).
+var pmidRegex = regexp.MustCompile(`^\d+$`)
 
 // LiteratureTool is a tool that fetches literature information using PubMed or DOI IDs.
 type LiteratureTool struct {
@@ -25,23 +36,32 @@ type LiteratureTool struct {
 
 // LiteratureRequest represents the parameters for the literature fetch request.
 type LiteratureRequest struct {
-	ID       string `validate:"required" json:"id"`
-	IDType   string `validate:"required,oneof=pmid doi" json:"id_type"`
+	ID       string `validate:"required"                         json:"id"`
+	IDType   string `validate:"required,oneof=pmid doi"          json:"id_type"`
 	Provider string `validate:"omitempty,oneof=pubmed europepmc" json:"provider"`
 }
 
 // fetchArticle retrieves article information using the recommended strategy:
 // - For DOI: Try EuropePMC
 // - For PMID: Try EuropePMC first, fallback to NCBI/PubMed
-func (l *LiteratureTool) fetchArticle(ctx context.Context, params LiteratureRequest) (*Article, error) {
+func (l *LiteratureTool) fetchArticle(
+	ctx context.Context,
+	params LiteratureRequest,
+) (*Article, error) {
 	if params.IDType == "doi" {
 		// For DOI, only use EuropePMC as it has better DOI support
-		l.Logger.Printf("Fetching article for DOI %s using EuropePMC", params.ID)
+		l.Logger.Printf(
+			"Fetching article for DOI %s using EuropePMC",
+			params.ID,
+		)
 		return l.client.GetArticleFromEuropePMC(ctx, params.ID, params.IDType)
 	}
 
 	// For PMID, use EuropePMC first with PubMed fallback
-	l.Logger.Printf("Fetching article for PMID %s using EuropePMC with PubMed fallback", params.ID)
+	l.Logger.Printf(
+		"Fetching article for PMID %s using EuropePMC with PubMed fallback",
+		params.ID,
+	)
 	return l.client.GetArticleWithFallback(ctx, params.ID, params.IDType)
 }
 
@@ -60,13 +80,17 @@ func NewLiteratureTool(logger *log.Logger) (*LiteratureTool, error) {
 		),
 		mcp.WithString(
 			"id_type",
-			mcp.Description("Type of identifier: 'pmid' for PubMed IDs or 'doi' for DOI"),
+			mcp.Description(
+				"Type of identifier: 'pmid' for PubMed IDs or 'doi' for DOI",
+			),
 			mcp.Required(),
 			mcp.Enum("pmid", "doi"),
 		),
 		mcp.WithString(
 			"provider",
-			mcp.Description("Literature provider: 'pubmed' (default) or 'europepmc' for enhanced metadata"),
+			mcp.Description(
+				"Literature provider: 'pubmed' (default) or 'europepmc' for enhanced metadata",
+			),
 			mcp.Enum("pubmed", "europepmc"),
 		),
 	)
@@ -173,51 +197,44 @@ func (l *LiteratureTool) normalizeID(id, idType string) (string, error) {
 
 // normalizePMID validates and normalizes a PubMed ID.
 func (l *LiteratureTool) normalizePMID(pmid string) (string, error) {
-	// Remove common prefixes and whitespace
-	pmid = strings.TrimSpace(pmid)
-	pmid = strings.TrimPrefix(pmid, "PMID:")
-	pmid = strings.TrimPrefix(pmid, "pmid:")
-	pmid = strings.TrimSpace(pmid)
-
-	// Validate that it contains only digits
-	if pmid == "" {
+	pid := strings.TrimSpace(pmid)
+	if len(pid) == 0 {
 		return "", fmt.Errorf("PMID cannot be empty")
 	}
-
-	for _, char := range pmid {
-		if char < '0' || char > '9' {
-			return "", fmt.Errorf("PMID must contain only digits, got: %s", pmid)
-		}
+	if !pmidRegex.MatchString(pid) {
+		return "", fmt.Errorf(
+			"PMID must contain only digits, got: %s",
+			pmid,
+		)
 	}
 
-	return pmid, nil
+	return pid, nil
 }
 
 // normalizeDOI validates and normalizes a DOI.
 func (l *LiteratureTool) normalizeDOI(doi string) (string, error) {
-	// Remove whitespace and common prefixes
-	doi = strings.TrimSpace(doi)
-	doi = strings.TrimPrefix(doi, "DOI:")
-	doi = strings.TrimPrefix(doi, "doi:")
-	doi = strings.TrimPrefix(doi, "https://doi.org/")
-	doi = strings.TrimPrefix(doi, "http://doi.org/")
-	doi = strings.TrimSpace(doi)
-
-	if doi == "" {
-		return "", fmt.Errorf("DOI cannot be empty")
+	// Use regex to match and extract the DOI from various formats
+	matches := doiRegex.FindStringSubmatch(doi)
+	if len(matches) < 2 {
+		return "", fmt.Errorf(
+			"invalid DOI format, expected '10.xxxx/yyyy', got: %s",
+			doi,
+		)
 	}
 
-	// Basic DOI format validation (10.xxxx/xxxx pattern)
-	if !strings.HasPrefix(doi, "10.") {
-		return "", fmt.Errorf("DOI must start with '10.', got: %s", doi)
-	}
+	// The captured group contains the normalized DOI
+	normalizedDOI := matches[1]
 
-	parts := strings.SplitN(doi, "/", 2)
+	// Validate that the suffix after "/" is not empty
+	parts := strings.SplitN(normalizedDOI, "/", 2)
 	if len(parts) != 2 || parts[1] == "" {
-		return "", fmt.Errorf("invalid DOI format, expected '10.xxxx/yyyy', got: %s", doi)
+		return "", fmt.Errorf(
+			"invalid DOI format, expected '10.xxxx/yyyy', got: %s",
+			doi,
+		)
 	}
 
-	return doi, nil
+	return normalizedDOI, nil
 }
 
 // formatArticleResult formats the article information for display.
@@ -252,7 +269,9 @@ func (l *LiteratureTool) formatArticleResult(article *Article) (string, error) {
 	}
 
 	if article.Journal.Title != "" {
-		result.WriteString(fmt.Sprintf("**Journal:** %s", article.Journal.Title))
+		result.WriteString(
+			fmt.Sprintf("**Journal:** %s", article.Journal.Title),
+		)
 		if article.PubYear != "" {
 			result.WriteString(fmt.Sprintf(" (%s)", article.PubYear))
 		}
@@ -260,7 +279,9 @@ func (l *LiteratureTool) formatArticleResult(article *Article) (string, error) {
 	}
 
 	if article.Abstract != "" {
-		result.WriteString(fmt.Sprintf("**Abstract:** %s\n\n", article.Abstract))
+		result.WriteString(
+			fmt.Sprintf("**Abstract:** %s\n\n", article.Abstract),
+		)
 	}
 
 	if article.PMID != "" {
@@ -272,7 +293,9 @@ func (l *LiteratureTool) formatArticleResult(article *Article) (string, error) {
 	}
 
 	if article.CitedByCount > 0 {
-		result.WriteString(fmt.Sprintf("**Citations:** %d\n", article.CitedByCount))
+		result.WriteString(
+			fmt.Sprintf("**Citations:** %d\n", article.CitedByCount),
+		)
 	}
 
 	result.WriteString("\n---\n\n")
