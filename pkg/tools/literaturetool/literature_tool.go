@@ -43,12 +43,12 @@ type LiteratureRequest struct {
 
 // fetchArticle retrieves article information using the recommended strategy:
 // - For DOI: Try EuropePMC
-// - For PMID: Try EuropePMC first, fallback to NCBI/PubMed
+// - For PMID: Try EuropePMC first, fallback to NCBI/PubMed.
 func (l *LiteratureTool) fetchArticle(
 	ctx context.Context,
 	params LiteratureRequest,
 ) (*Article, error) {
-	if params.IDType == "doi" {
+	if params.IDType == IDTypeDOI {
 		// For DOI, only use EuropePMC as it has better DOI support
 		l.Logger.Printf(
 			"Fetching article for DOI %s using EuropePMC",
@@ -137,7 +137,7 @@ func (l *LiteratureTool) Handler(
 	args := request.GetArguments()
 
 	// Create request with required parameters
-	id, idOk := args["id"].(string)
+	identifier, idOk := args["id"].(string)
 	idType, idTypeOk := args["id_type"].(string)
 
 	if !idOk || !idTypeOk {
@@ -145,7 +145,7 @@ func (l *LiteratureTool) Handler(
 	}
 
 	params := LiteratureRequest{
-		ID:     id,
+		ID:     identifier,
 		IDType: idType,
 	}
 
@@ -186,9 +186,9 @@ func (l *LiteratureTool) Handler(
 // normalizeID validates and normalizes the identifier based on its type.
 func (l *LiteratureTool) normalizeID(id, idType string) (string, error) {
 	switch idType {
-	case "pmid":
+	case IDTypePMID:
 		return l.normalizePMID(id)
-	case "doi":
+	case IDTypeDOI:
 		return l.normalizeDOI(id)
 	default:
 		return "", fmt.Errorf("unsupported ID type: %s", idType)
@@ -243,24 +243,31 @@ func (l *LiteratureTool) formatArticleResult(article *Article) (string, error) {
 		return "No article found", nil
 	}
 
-	// Create a formatted JSON response
 	jsonData, err := json.MarshalIndent(article, "", "  ")
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal article data: %w", err)
 	}
 
-	// Create a formatted text response
 	var result strings.Builder
 	result.WriteString("## Literature Information\n\n")
 
+	l.formatBasicInfo(&result, article)
+	l.formatMetadata(&result, article)
+	l.formatJSONData(&result, jsonData)
+
+	return result.String(), nil
+}
+
+// formatBasicInfo formats title, authors, and journal information.
+func (l *LiteratureTool) formatBasicInfo(result *strings.Builder, article *Article) {
 	if article.Title != "" {
-		result.WriteString(fmt.Sprintf("**Title:** %s\n\n", article.Title))
+		fmt.Fprintf(result, "**Title:** %s\n\n", article.Title)
 	}
 
 	if len(article.Authors) > 0 {
 		result.WriteString("**Authors:** ")
-		for i, author := range article.Authors {
-			if i > 0 {
+		for index, author := range article.Authors {
+			if index > 0 {
 				result.WriteString(", ")
 			}
 			result.WriteString(author.FullName)
@@ -269,39 +276,37 @@ func (l *LiteratureTool) formatArticleResult(article *Article) (string, error) {
 	}
 
 	if article.Journal.Title != "" {
-		result.WriteString(
-			fmt.Sprintf("**Journal:** %s", article.Journal.Title),
-		)
+		fmt.Fprintf(result, "**Journal:** %s", article.Journal.Title)
 		if article.PubYear != "" {
-			result.WriteString(fmt.Sprintf(" (%s)", article.PubYear))
+			fmt.Fprintf(result, " (%s)", article.PubYear)
 		}
 		result.WriteString("\n\n")
 	}
 
 	if article.Abstract != "" {
-		result.WriteString(
-			fmt.Sprintf("**Abstract:** %s\n\n", article.Abstract),
-		)
+		fmt.Fprintf(result, "**Abstract:** %s\n\n", article.Abstract)
 	}
+}
 
+// formatMetadata formats PMID, DOI, and citation information.
+func (l *LiteratureTool) formatMetadata(result *strings.Builder, article *Article) {
 	if article.PMID != "" {
-		result.WriteString(fmt.Sprintf("**PMID:** %s\n", article.PMID))
+		fmt.Fprintf(result, "**PMID:** %s\n", article.PMID)
 	}
 
 	if article.DOI != "" {
-		result.WriteString(fmt.Sprintf("**DOI:** %s\n", article.DOI))
+		fmt.Fprintf(result, "**DOI:** %s\n", article.DOI)
 	}
 
 	if article.CitedByCount > 0 {
-		result.WriteString(
-			fmt.Sprintf("**Citations:** %d\n", article.CitedByCount),
-		)
+		fmt.Fprintf(result, "**Citations:** %d\n", article.CitedByCount)
 	}
+}
 
+// formatJSONData appends the raw JSON data section.
+func (l *LiteratureTool) formatJSONData(result *strings.Builder, jsonData []byte) {
 	result.WriteString("\n---\n\n")
 	result.WriteString("**Raw JSON Data:**\n```json\n")
 	result.WriteString(string(jsonData))
 	result.WriteString("\n```")
-
-	return result.String(), nil
 }
