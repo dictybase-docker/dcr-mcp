@@ -75,6 +75,15 @@ linters:
       - third_party$
       - builtin$
       - examples$
+    rules:
+      - path: pkg/tools/literaturetool/literature_tool_test.go
+        linters:
+          - funlen
+        text: "Function 'TestNormalizeDOI' is too long"
+      - path: pkg/tools/literaturetool/literature_tool_test.go
+        linters:
+          - funlen
+        text: "Function 'TestHandler_ValidationErrors' is too long"
 formatters:
   enable:
     - gci
