@@ -7,8 +7,9 @@ import (
 
 	"github.com/dictybase/dcr-mcp/pkg/prompts"
 	"github.com/dictybase/dcr-mcp/pkg/tools/gitsummary"
+	"github.com/dictybase/dcr-mcp/pkg/tools/literaturetool"
 	"github.com/dictybase/dcr-mcp/pkg/tools/markdowntool"
-	"github.com/dictybase/dcr-mcp/pkg/tools/pdftool" // Add this line
+	"github.com/dictybase/dcr-mcp/pkg/tools/pdftool"
 	"github.com/mark3labs/mcp-go/server"
 )
 
@@ -56,6 +57,19 @@ func main() {
 	mcpServer.AddTool(
 		pdfTool.GetTool(),
 		pdfTool.Handler,
+	)
+
+	// Create and register literature tool
+	literatureTool, err := literaturetool.NewLiteratureTool(
+		log.New(os.Stderr, "[literature] ", log.LstdFlags),
+	)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to create literature tool: %v", err)
+		os.Exit(1)
+	}
+	mcpServer.AddTool(
+		literatureTool.GetTool(),
+		literatureTool.Handler,
 	)
 
 	// --- Add Email Prompt ---
