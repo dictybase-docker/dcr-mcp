@@ -33,7 +33,8 @@ func TestLiteratureTool_GetMethods(t *testing.T) {
 	require.NoError(t, err)
 
 	assert.Equal(t, "literature-fetch", tool.GetName())
-	assert.Equal(t, "Fetches scientific literature information using PubMed or DOI IDs via the dictyBase literature API", tool.GetDescription())
+	expectedDescription := "Fetches scientific literature information using PubMed or DOI IDs via the dictyBase literature API"
+	assert.Equal(t, expectedDescription, tool.GetDescription())
 
 	schema := tool.GetSchema()
 	assert.NotNil(t, schema)
@@ -87,23 +88,28 @@ func TestNormalizePMID(t *testing.T) {
 	tool, err := NewLiteratureTool(logger)
 	require.NoError(t, err)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := tool.normalizePMID(tt.input)
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := tool.normalizePMID(testCase.input)
 
-			if tt.wantErr {
+			if testCase.wantErr {
 				assert.Error(t, err)
 				return
 			}
 
-			assert.NoError(t, err)
-			assert.Equal(t, tt.want, got)
+			require.NoError(t, err)
+			assert.Equal(t, testCase.want, got)
 		})
 	}
 }
 
 func TestNormalizeDOI(t *testing.T) {
 	t.Parallel()
+
+	// TODO(human): Consider refactoring this large test function (88 lines) into smaller,
+	// focused test functions or subtests. Group test cases by category like "valid formats",
+	// "invalid formats", and "edge cases" for better organization and clearer failure reporting.
 
 	tests := []struct {
 		name    string
@@ -177,17 +183,18 @@ func TestNormalizeDOI(t *testing.T) {
 	tool, err := NewLiteratureTool(logger)
 	require.NoError(t, err)
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := tool.normalizeDOI(tt.input)
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := tool.normalizeDOI(testCase.input)
 
-			if tt.wantErr {
+			if testCase.wantErr {
 				assert.Error(t, err)
 				return
 			}
 
-			assert.NoError(t, err)
-			assert.Equal(t, tt.want, got)
+			require.NoError(t, err)
+			assert.Equal(t, testCase.want, got)
 		})
 	}
 }
@@ -229,23 +236,28 @@ func TestNormalizeID(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			got, err := tool.normalizeID(tt.id, tt.idType)
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
+			got, err := tool.normalizeID(testCase.id, testCase.idType)
 
-			if tt.wantErr {
+			if testCase.wantErr {
 				assert.Error(t, err)
 				return
 			}
 
-			assert.NoError(t, err)
-			assert.Equal(t, tt.want, got)
+			require.NoError(t, err)
+			assert.Equal(t, testCase.want, got)
 		})
 	}
 }
 
 func TestHandler_ValidationErrors(t *testing.T) {
 	t.Parallel()
+
+	// TODO(human): Consider refactoring this validation error test function (77 lines) into
+	// smaller test functions organized by validation type (e.g., missing parameters,
+	// invalid parameter values, format validation errors) for better maintainability.
 
 	logger := log.New(os.Stderr, "[test] ", log.LstdFlags)
 	tool, err := NewLiteratureTool(logger)
@@ -305,20 +317,21 @@ func TestHandler_ValidationErrors(t *testing.T) {
 		},
 	}
 
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
+	for _, testCase := range tests {
+		t.Run(testCase.name, func(t *testing.T) {
+			t.Parallel()
 			request := mcp.CallToolRequest{
 				Params: mcp.CallToolParams{
 					Name:      "literature-fetch",
-					Arguments: tt.args,
+					Arguments: testCase.args,
 				},
 			}
 
 			result, err := tool.Handler(context.Background(), request)
 
-			assert.Error(t, err)
+			require.Error(t, err)
 			assert.Nil(t, result)
-			assert.Contains(t, err.Error(), tt.wantErrContains)
+			assert.Contains(t, err.Error(), testCase.wantErrContains)
 		})
 	}
 }
@@ -331,12 +344,14 @@ func TestFormatArticleResult(t *testing.T) {
 	require.NoError(t, err)
 
 	t.Run("nil article", func(t *testing.T) {
+		t.Parallel()
 		result, err := tool.formatArticleResult(nil)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Equal(t, "No article found", result)
 	})
 
 	t.Run("full article", func(t *testing.T) {
+		t.Parallel()
 		article := &Article{
 			ID:       "PMC123456",
 			Source:   "europepmc",
@@ -364,7 +379,7 @@ func TestFormatArticleResult(t *testing.T) {
 		}
 
 		result, err := tool.formatArticleResult(article)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		assert.Contains(t, result, "Test Article Title")
 		assert.Contains(t, result, "John Doe")
 		assert.Contains(t, result, "Jane Smith")
