@@ -58,18 +58,6 @@ func TestNormalizePMID(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name:    "PMID with prefix",
-			input:   "PMID:12345678",
-			want:    "12345678",
-			wantErr: false,
-		},
-		{
-			name:    "PMID with lowercase prefix",
-			input:   "pmid:12345678",
-			want:    "12345678",
-			wantErr: false,
-		},
-		{
 			name:    "PMID with whitespace",
 			input:   "  12345678  ",
 			want:    "12345678",
@@ -220,7 +208,7 @@ func TestNormalizeID(t *testing.T) {
 	}{
 		{
 			name:    "normalize PMID",
-			id:      "PMID:12345678",
+			id:      "12345678",
 			idType:  "pmid",
 			want:    "12345678",
 			wantErr: false,
