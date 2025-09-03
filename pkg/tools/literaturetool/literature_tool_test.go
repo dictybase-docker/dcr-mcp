@@ -106,11 +106,6 @@ func TestNormalizePMID(t *testing.T) {
 
 func TestNormalizeDOI(t *testing.T) {
 	t.Parallel()
-
-	// TODO(human): Consider refactoring this large test function (88 lines) into smaller,
-	// focused test functions or subtests. Group test cases by category like "valid formats",
-	// "invalid formats", and "edge cases" for better organization and clearer failure reporting.
-
 	tests := []struct {
 		name    string
 		input   string
@@ -254,37 +249,32 @@ func TestNormalizeID(t *testing.T) {
 
 func TestHandler_ValidationErrors(t *testing.T) {
 	t.Parallel()
-
-	// TODO(human): Consider refactoring this validation error test function (77 lines) into
-	// smaller test functions organized by validation type (e.g., missing parameters,
-	// invalid parameter values, format validation errors) for better maintainability.
-
 	logger := log.New(os.Stderr, "[test] ", log.LstdFlags)
 	tool, err := NewLiteratureTool(logger)
 	require.NoError(t, err)
 
 	tests := []struct {
 		name            string
-		args            map[string]interface{}
+		args            map[string]any
 		wantErrContains string
 	}{
 		{
 			name: "missing id",
-			args: map[string]interface{}{
+			args: map[string]any{
 				"id_type": "pmid",
 			},
 			wantErrContains: "missing required parameters",
 		},
 		{
 			name: "missing id_type",
-			args: map[string]interface{}{
+			args: map[string]any{
 				"id": "12345678",
 			},
 			wantErrContains: "missing required parameters",
 		},
 		{
 			name: "invalid id_type",
-			args: map[string]interface{}{
+			args: map[string]any{
 				"id":      "12345678",
 				"id_type": "invalid",
 			},
@@ -292,7 +282,7 @@ func TestHandler_ValidationErrors(t *testing.T) {
 		},
 		{
 			name: "invalid provider",
-			args: map[string]interface{}{
+			args: map[string]any{
 				"id":       "12345678",
 				"id_type":  "pmid",
 				"provider": "invalid",
@@ -301,7 +291,7 @@ func TestHandler_ValidationErrors(t *testing.T) {
 		},
 		{
 			name: "invalid PMID format",
-			args: map[string]interface{}{
+			args: map[string]any{
 				"id":      "abc123",
 				"id_type": "pmid",
 			},
@@ -309,7 +299,7 @@ func TestHandler_ValidationErrors(t *testing.T) {
 		},
 		{
 			name: "invalid DOI format",
-			args: map[string]interface{}{
+			args: map[string]any{
 				"id":      "invalid-doi",
 				"id_type": "doi",
 			},

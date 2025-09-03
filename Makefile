@@ -15,9 +15,9 @@ run:
 test:
 	go test ./...
 
-# Run tests with gotestum
+# Run tests with gotestsum
 test-verbose:
-	gotestum --format-hide-empty-pkg --format testdox --format-icons hivis
+	gotestsum --format-hide-empty-pkg --format testdox --format-icons hivis
 
 # Format code
 fmt:
